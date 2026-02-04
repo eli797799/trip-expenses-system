@@ -31,6 +31,7 @@ export function computeBalances(
       diff: p.sum - expected,
     }));
   }
+  // Pro-rata: expected_i = totalAmount × (days_i / totalDays) – יחס הימים של כל משתתף לסך הימים
   return paidByParticipant.map((p) => {
     const days = Math.max(1, p.days || 1);
     const expected = (totalAmount * days) / totalDays;

@@ -1,5 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 
+const CORS_HEADERS = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Methods": "POST, OPTIONS",
+  "Access-Control-Allow-Headers": "Content-Type",
+};
+
 export type ReceiptAnalysis = {
   amount: number | null;
   date: string | null;
@@ -43,7 +49,11 @@ async function analyzeWithGemini(
   if (!res.ok) {
     const err = await res.text();
     console.error("Gemini error", res.status, err);
-    throw new Error("Gemini request failed");
+    // 401/403 = API key invalid or missing
+    const code = res.status === 401 || res.status === 403 ? "GEMINI_API_KEY_INVALID" : "GEMINI_REQUEST_FAILED";
+    const errObj = new Error("Gemini request failed") as Error & { debugCode?: string };
+    errObj.debugCode = code;
+    throw errObj;
   }
 
   const data = (await res.json()) as {
@@ -86,7 +96,10 @@ async function analyzeWithOpenAI(
   if (!res.ok) {
     const err = await res.text();
     console.error("OpenAI error", res.status, err);
-    throw new Error("OpenAI request failed");
+    const code = res.status === 401 || res.status === 403 ? "OPENAI_API_KEY_INVALID" : "OPENAI_REQUEST_FAILED";
+    const errObj = new Error("OpenAI request failed") as Error & { debugCode?: string };
+    errObj.debugCode = code;
+    throw errObj;
   }
 
   const data = (await res.json()) as {
@@ -114,13 +127,17 @@ function parseReceiptJson(content: string): ReceiptAnalysis {
   return result;
 }
 
+export async function OPTIONS() {
+  return new NextResponse(null, { status: 204, headers: CORS_HEADERS });
+}
+
 export async function POST(request: NextRequest) {
   try {
     const formData = await request.formData();
     const file = formData.get("file") as File | null;
     if (!file || !file.type.startsWith("image/")) {
       return NextResponse.json(
-        { error: "נא להעלות קובץ תמונה (קבלה)" },
+        { error: "נא להעלות קובץ תמונה (קבלה)", debugCode: "INVALID_FILE" },
         { status: 400 }
       );
     }
@@ -139,6 +156,7 @@ export async function POST(request: NextRequest) {
           date: null,
           businessName: null,
           message: "ניתוח IA לא מוגדר. הזן סכום, תאריך ותיאור ידנית.",
+          debugCode: "NO_API_KEY",
         },
         { status: 200 }
       );
@@ -153,13 +171,15 @@ export async function POST(request: NextRequest) {
       } else {
         result = { amount: null, date: null, businessName: null };
       }
-    } catch {
+    } catch (err) {
+      const debugCode = (err as Error & { debugCode?: string }).debugCode ?? "AI_ANALYSIS_FAILED";
       return NextResponse.json(
         {
           amount: null,
           date: null,
           businessName: null,
           message: "ניתוח IA נכשל. הזן נתונים ידנית.",
+          debugCode,
         },
         { status: 200 }
       );
@@ -174,6 +194,7 @@ export async function POST(request: NextRequest) {
         date: null,
         businessName: null,
         message: "שגיאה בניתוח קבלה.",
+        debugCode: "UPLOAD_OR_SERVER_ERROR",
       },
       { status: 200 }
     );

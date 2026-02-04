@@ -110,6 +110,8 @@ export default function TripPage() {
   const [viewCodeInput, setViewCodeInput] = useState("");
   const [verifyingCode, setVerifyingCode] = useState(false);
   const [viewCodeError, setViewCodeError] = useState("");
+  const [dynamicQuote, setDynamicQuote] = useState<string | null>(null);
+  const [quoteLoading, setQuoteLoading] = useState(false);
 
   const VIEW_STORAGE_KEY = "trip_view_";
 
@@ -242,6 +244,30 @@ export default function TripPage() {
     setPaymentUnlocked(checkPaymentUnlocked());
   }, [code]);
 
+  // משפט משתנה מבוסס AI – נטען בכל כניסה לטיול לפני הזנת הקוד
+  useEffect(() => {
+    if (!trip || !summary || paymentUnlocked) return;
+    setQuoteLoading(true);
+    setDynamicQuote(null);
+    const participants = summary.balances.map((b) => ({
+      name: b.name,
+      nickname: b.nickname,
+      paid: b.paid,
+    }));
+    fetch("/api/trip-quote", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        total: summary.total,
+        participants,
+      }),
+    })
+      .then((res) => res.json())
+      .then((data) => setDynamicQuote(data.quote ?? null))
+      .catch(() => setDynamicQuote(null))
+      .finally(() => setQuoteLoading(false));
+  }, [trip, summary, paymentUnlocked]);
+
   useEffect(() => {
     if (!code || typeof window === "undefined") return;
     const params = new URLSearchParams(window.location.search);
@@ -309,48 +335,75 @@ export default function TripPage() {
         </p>
       )}
 
-      {paymentUnlocked ? (
-        <>
+      <div className="relative mb-4 min-h-[260px] animate-fade-in opacity-0 animate-delay-2 [animation-fill-mode:forwards]">
+        <div
+          className={`transition-all duration-500 ease-out ${!paymentUnlocked ? "blur-[20px] select-none" : "blur-0"}`}
+        >
           <TripHomeSummary summary={summary} />
           <WhoPaysWhom settlements={summary?.settlements ?? []} />
-        </>
-      ) : (
-        <div className="glass-card p-4 sm:p-5 mb-4 animate-fade-in opacity-0 animate-delay-2 [animation-fill-mode:forwards]">
-          <h2 className="font-semibold mb-2 text-sm sm:text-base text-[var(--foreground)]">צפייה בסכומים</h2>
-          <p className="text-[var(--muted)] text-sm mb-3">
-            רק למי שיש את קוד הצפייה – הזן קוד (או השאר ריק בטיולים ישנים) כדי לראות סך הוצאות ומי משלם למי.
-          </p>
-          <form
-            onSubmit={(e) => {
-              e.preventDefault();
-              verifyViewCode(viewCodeInput);
-            }}
-            className="flex flex-col sm:flex-row gap-2"
-          >
-            <input
-              type="text"
-              inputMode="numeric"
-              pattern="[0-9]*"
-              placeholder="קוד צפייה (4 ספרות)"
-              value={viewCodeInput}
-              onChange={(e) => setViewCodeInput(e.target.value.replace(/\D/g, "").slice(0, 4))}
-              className="flex-1 input-dark px-4 py-3 min-h-[44px] tap-target"
-              dir="ltr"
-              maxLength={4}
-            />
-            <button
-              type="submit"
-              disabled={verifyingCode}
-              className="btn-neon px-4 py-3 min-h-[44px] tap-target disabled:opacity-50 shrink-0"
-            >
-              {verifyingCode ? "בודק..." : "הצג סכומים"}
-            </button>
-          </form>
-          {viewCodeError && <p className="text-red-400 text-sm mt-2">{viewCodeError}</p>}
         </div>
-      )}
+        <div
+          className={`absolute inset-0 flex flex-col items-center justify-center gap-6 p-4 sm:p-6 transition-all duration-500 ease-out ${
+            paymentUnlocked ? "pointer-events-none opacity-0" : "opacity-100"
+          }`}
+        >
+          <div className="px-6 py-5 sm:px-8 sm:py-6 text-center max-w-md rounded-2xl bg-white/12 backdrop-blur-xl border border-white/25 shadow-[0_8px_32px_rgba(0,0,0,0.4)]">
+            {quoteLoading ? (
+              <p className="text-base sm:text-lg text-white/80 animate-pulse">טוען משפט...</p>
+            ) : (
+              <p className="text-lg sm:text-xl font-bold text-white leading-relaxed [text-shadow:0_2px_8px_rgba(0,0,0,0.6)]">
+                &ldquo;{dynamicQuote || "בטיול לא מחשבנים כסף, בטיול נהנים!"}&rdquo;
+              </p>
+            )}
+            {!quoteLoading && (
+              <p className="mt-2 text-sm sm:text-base font-semibold text-white/90">
+                – {dynamicQuote ? "משפט משתנה" : "אהרון גרנובסקי"}
+              </p>
+            )}
+          </div>
+          <div className="glass-card p-4 sm:p-5 w-full max-w-md">
+            <h2 className="font-semibold mb-2 text-sm sm:text-base text-[var(--foreground)]">צפייה בסכומים</h2>
+            <p className="text-[var(--muted)] text-sm mb-3">
+              הזן קוד צפייה כדי לראות את הסכומים (או השאר ריק בטיולים ישנים).
+            </p>
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                verifyViewCode(viewCodeInput);
+              }}
+              className="flex flex-col sm:flex-row gap-2"
+            >
+              <input
+                type="text"
+                inputMode="numeric"
+                pattern="[0-9]*"
+                placeholder="קוד צפייה (4 ספרות)"
+                value={viewCodeInput}
+                onChange={(e) => setViewCodeInput(e.target.value.replace(/\D/g, "").slice(0, 4))}
+                className="flex-1 input-dark px-4 py-3 min-h-[44px] tap-target"
+                dir="ltr"
+                maxLength={4}
+              />
+              <button
+                type="submit"
+                disabled={verifyingCode}
+                className="btn-neon px-4 py-3 min-h-[44px] tap-target disabled:opacity-50 shrink-0"
+              >
+                {verifyingCode ? "בודק..." : "הצג סכומים"}
+              </button>
+            </form>
+            {viewCodeError && <p className="text-red-400 text-sm mt-2">{viewCodeError}</p>}
+          </div>
+        </div>
+      </div>
 
-      <AddParticipantSection tripId={trip.id} participants={trip.participants} onAdded={refresh} />
+      <AddParticipantSection
+        tripId={trip.id}
+        participants={trip.participants}
+        onAdded={refresh}
+        paymentUnlocked={paymentUnlocked}
+        balances={summary?.balances ?? null}
+      />
 
       <div className="mt-6">
         <button
@@ -403,10 +456,14 @@ function AddParticipantSection({
   tripId,
   participants,
   onAdded,
+  paymentUnlocked,
+  balances,
 }: {
   tripId: string;
   participants: ParticipantRow[];
   onAdded: () => void;
+  paymentUnlocked?: boolean;
+  balances?: Summary["balances"] | null;
 }) {
   const [showForm, setShowForm] = useState(false);
   const [name, setName] = useState("");
@@ -471,10 +528,15 @@ function AddParticipantSection({
       <h3 className="font-semibold mb-2 text-sm sm:text-base text-[var(--foreground)]">משתתפים ({participants.length})</h3>
       {participants.length > 0 && (
         <ul className="text-sm text-[var(--muted)] mb-3 space-y-2">
-          {participants.map((p) => (
+          {participants.map((p) => {
+            const bal = paymentUnlocked && balances ? balances.find((b) => b.participantId === p.id) : null;
+            return (
             <li key={p.id} className="flex flex-wrap items-center gap-2">
               <span>
-                {p.nickname || p.name}
+                <span className="font-medium text-[var(--foreground)]">{p.nickname || p.name}</span>
+                {paymentUnlocked && bal != null && (
+                  <span className="mr-1 font-semibold text-[var(--neon)]">: ₪{bal.expected.toFixed(2)}</span>
+                )}
                 {editingId !== p.id && (
                   p.days_in_trip != null && p.days_in_trip >= 1 ? (
                     <span className="text-[var(--foreground)]"> ({p.days_in_trip} {p.days_in_trip === 1 ? "יום" : "ימים"})</span>
@@ -520,7 +582,8 @@ function AddParticipantSection({
                 </button>
               )}
             </li>
-          ))}
+          );
+          })}
         </ul>
       )}
       {!showForm ? (
@@ -638,8 +701,26 @@ function AddExpenseScreen({ tripId, participants, onClose, onSaved }: AddExpense
       if (data.amount != null) setAmount(String(data.amount));
       if (data.date) setPaidAt(data.date);
       if (data.businessName) setDescription((d) => d || data.businessName);
-    } catch {
+      // לוג בדיקה – אם הניתוח נכשל, הצג ב-Console כדי לאבחן בעיה במפתח API או בשליחת התמונה
+      if (data.message || data.debugCode) {
+        const msg = data.debugCode === "NO_API_KEY"
+          ? "[ניתוח קבלה] מפתח API לא מוגדר – הוסף GOOGLE_GEMINI_API_KEY ב-Vercel Environment Variables"
+          : data.debugCode === "GEMINI_API_KEY_INVALID" || data.debugCode === "OPENAI_API_KEY_INVALID"
+            ? "[ניתוח קבלה] מפתח API לא תקין או לא מאושר – בדוק את ה-API key ב-Google AI Studio / OpenAI"
+            : data.debugCode === "UPLOAD_OR_SERVER_ERROR"
+              ? "[ניתוח קבלה] שגיאת שרת או העלאה – ייתכן ששליחת התמונה נכשלה"
+              : data.debugCode === "INVALID_FILE"
+                ? "[ניתוח קבלה] קובץ לא תקין – וודא שהעלית תמונה (jpg, png וכו')"
+                : `[ניתוח קבלה] נכשל – debugCode: ${data.debugCode}`;
+        console.warn(msg, { debugCode: data.debugCode, message: data.message });
+      }
+    } catch (err) {
       setAiResult({ amount: null, date: null, businessName: null });
+      // לוג – fetch נכשל = בעיית רשת, CORS, או שהשרת לא הגיב
+      console.error(
+        "[ניתוח קבלה] שגיאה – ייתכן בעיית רשת, CORS או שהתמונה לא נשלחה. פתח Network ב-DevTools ובדוק אם הבקשה ל-/api/receipt-analyze נשלחת ומקבלת תשובה.",
+        err
+      );
     } finally {
       setAnalyzing(false);
     }
