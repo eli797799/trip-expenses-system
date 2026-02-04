@@ -2,18 +2,23 @@
 
 import { useState, useEffect } from "react";
 
+/** PWA: אירוע beforeinstallprompt מכיל prompt() */
+interface BeforeInstallPromptEvent extends Event {
+  prompt: () => Promise<{ outcome: "accepted" | "dismissed" }>;
+}
+
 export function InstallAppButton() {
-  const [deferredPrompt, setDeferredPrompt] = useState<{ prompt: () => Promise<void> } | null>(null);
+  const [deferredPrompt, setDeferredPrompt] = useState<{ prompt: () => Promise<{ outcome: string }> } | null>(null);
   const [installed, setInstalled] = useState(false);
 
   useEffect(() => {
-    const handler = (e: Event) => {
+    const handler = (e: BeforeInstallPromptEvent) => {
       e.preventDefault();
-      setDeferredPrompt({ prompt: () => (e as { prompt: () => Promise<void> }).prompt() });
+      setDeferredPrompt({ prompt: () => e.prompt() });
     };
-    window.addEventListener("beforeinstallprompt", handler);
+    window.addEventListener("beforeinstallprompt", handler as EventListener);
     if (window.matchMedia("(display-mode: standalone)").matches) setInstalled(true);
-    return () => window.removeEventListener("beforeinstallprompt", handler);
+    return () => window.removeEventListener("beforeinstallprompt", handler as EventListener);
   }, []);
 
   if (installed) return null;
