@@ -268,17 +268,17 @@ export default function TripPage() {
 
   if (loading && !trip) {
     return (
-      <div className="min-h-screen p-4 flex items-center justify-center">
-        <p className="text-gray-500">טוען...</p>
+      <div className="min-h-screen p-4 flex items-center justify-center bg-[var(--background)]">
+        <p className="text-[var(--muted)] animate-fade-in">טוען...</p>
       </div>
     );
   }
 
   if (error || !trip) {
     return (
-      <div className="min-h-screen p-4 max-w-lg mx-auto">
-        <p className="text-red-600 mb-4">{error || "טיול לא נמצא"}</p>
-        <Link href="/" className="text-slate-700 underline min-h-[44px] inline-flex items-center tap-target">
+      <div className="min-h-screen p-4 max-w-lg mx-auto bg-[var(--background)]">
+        <p className="text-red-400 mb-4">{error || "טיול לא נמצא"}</p>
+        <Link href="/" className="text-[var(--neon-blue)] hover:text-[var(--neon-purple)] underline min-h-[44px] inline-flex items-center tap-target transition-colors">
           חזרה לדף הבית
         </Link>
       </div>
@@ -287,19 +287,19 @@ export default function TripPage() {
 
   return (
     <div className="min-h-screen p-4 pb-8 md:p-6 max-w-2xl mx-auto bg-[var(--background)]">
-      <div className="flex items-center justify-between mb-3 sm:mb-4 gap-2 flex-wrap">
-        <Link href="/" className="text-slate-500 text-sm underline py-2 tap-target shrink-0 hover:text-slate-700">
+      <div className="flex items-center justify-between mb-3 sm:mb-4 gap-2 flex-wrap animate-fade-in opacity-0 [animation-fill-mode:forwards]">
+        <Link href="/" className="text-[var(--muted)] hover:text-[var(--foreground)] text-sm underline py-2 tap-target shrink-0 transition-colors">
           ← דף הבית
         </Link>
         <div className="flex items-center gap-2">
           <InstallAppButton />
-          <span className="text-slate-400 text-sm font-mono truncate" dir="ltr">
+          <span className="text-[var(--muted)] text-sm font-mono truncate" dir="ltr">
             קוד: {trip.trip_code}
           </span>
         </div>
       </div>
 
-      <h1 className="text-lg sm:text-xl font-semibold mb-1 sm:mb-2 break-words text-[var(--foreground)]">{trip.name}</h1>
+      <h1 className="text-lg sm:text-xl font-semibold mb-1 sm:mb-2 break-words text-[var(--foreground)] animate-fade-in opacity-0 animate-delay-1 [animation-fill-mode:forwards]">{trip.name}</h1>
       {(trip.start_date || trip.end_date) && (
         <p className="text-[var(--muted)] text-sm mb-4">
           {trip.start_date && new Date(trip.start_date).toLocaleDateString("he-IL")}
@@ -314,7 +314,7 @@ export default function TripPage() {
           <WhoPaysWhom settlements={summary?.settlements ?? []} />
         </>
       ) : (
-        <div className="bg-[var(--card-bg)] border border-[var(--card-border)] rounded-xl p-4 sm:p-5 mb-4 shadow-sm">
+        <div className="glass-card p-4 sm:p-5 mb-4 animate-fade-in opacity-0 animate-delay-2 [animation-fill-mode:forwards]">
           <h2 className="font-semibold mb-2 text-sm sm:text-base text-[var(--foreground)]">צפייה בסכומים</h2>
           <p className="text-[var(--muted)] text-sm mb-3">
             רק למי שיש את קוד הצפייה – הזן קוד (או השאר ריק בטיולים ישנים) כדי לראות סך הוצאות ומי משלם למי.
@@ -333,19 +333,19 @@ export default function TripPage() {
               placeholder="קוד צפייה (4 ספרות)"
               value={viewCodeInput}
               onChange={(e) => setViewCodeInput(e.target.value.replace(/\D/g, "").slice(0, 4))}
-              className="flex-1 border border-[var(--card-border)] rounded-lg px-4 py-3 min-h-[44px] text-[var(--foreground)]"
+              className="flex-1 input-dark px-4 py-3 min-h-[44px] tap-target"
               dir="ltr"
               maxLength={4}
             />
             <button
               type="submit"
               disabled={verifyingCode}
-              className="bg-slate-700 text-white px-4 py-3 rounded-lg font-medium min-h-[44px] tap-target disabled:opacity-50 shrink-0"
+              className="btn-neon px-4 py-3 min-h-[44px] tap-target disabled:opacity-50 shrink-0"
             >
               {verifyingCode ? "בודק..." : "הצג סכומים"}
             </button>
           </form>
-          {viewCodeError && <p className="text-red-500 text-sm mt-2">{viewCodeError}</p>}
+          {viewCodeError && <p className="text-red-400 text-sm mt-2">{viewCodeError}</p>}
         </div>
       )}
 
@@ -355,7 +355,7 @@ export default function TripPage() {
         <button
           type="button"
           onClick={() => setShowAddExpense(true)}
-          className="w-full bg-[var(--green)] text-white py-3.5 rounded-xl font-medium min-h-[48px] tap-target shadow-sm hover:opacity-95"
+          className="w-full btn-neon-green py-3.5 min-h-[48px] tap-target"
         >
           + הוסף הוצאה
         </button>
@@ -381,7 +381,7 @@ export default function TripPage() {
 function TripHomeSummary({ summary }: { summary: Summary | null }) {
   if (!summary) return null;
   return (
-    <div className="bg-[var(--card-bg)] border border-[var(--card-border)] rounded-xl shadow-sm p-4 grid grid-cols-3 gap-2 sm:gap-4 text-center mb-4">
+    <div className="glass-card p-4 grid grid-cols-3 gap-2 sm:gap-4 text-center mb-4 animate-fade-in opacity-0 animate-delay-2 [animation-fill-mode:forwards]">
       <div>
         <p className="text-lg sm:text-2xl font-semibold text-[var(--foreground)]">{summary.total.toFixed(2)} ₪</p>
         <p className="text-xs sm:text-sm text-[var(--muted)]">סך ההוצאות</p>
@@ -442,7 +442,7 @@ function AddParticipantSection({
   }
 
   return (
-    <div className="mt-6 bg-[var(--card-bg)] border border-[var(--card-border)] rounded-xl shadow-sm p-4">
+    <div className="mt-6 glass-card p-4 animate-fade-in opacity-0 animate-delay-3 [animation-fill-mode:forwards]">
       <h3 className="font-semibold mb-2 text-sm sm:text-base text-[var(--foreground)]">משתתפים ({participants.length})</h3>
       {participants.length > 0 && (
         <ul className="text-sm text-[var(--muted)] mb-3 space-y-1">
@@ -460,7 +460,7 @@ function AddParticipantSection({
         <button
           type="button"
           onClick={() => setShowForm(true)}
-          className="text-emerald-600 font-medium text-sm"
+          className="text-[var(--neon-cyan)] hover:text-[var(--neon-blue)] font-medium text-sm transition-colors"
         >
           + הוסף משתתף
         </button>
@@ -471,7 +471,7 @@ function AddParticipantSection({
             placeholder="שם *"
             value={name}
             onChange={(e) => setName(e.target.value)}
-            className="w-full border rounded-lg px-3 py-2 min-h-[44px]"
+            className="w-full input-dark px-3 py-2 min-h-[44px] tap-target"
             required
           />
           <input
@@ -479,7 +479,7 @@ function AddParticipantSection({
             placeholder="כינוי (אופציונלי)"
             value={nickname}
             onChange={(e) => setNickname(e.target.value)}
-            className="w-full border rounded-lg px-3 py-2 min-h-[44px]"
+            className="w-full input-dark px-3 py-2 min-h-[44px] tap-target"
           />
           <div>
             <label className="block text-xs text-[var(--muted)] mb-1">ימים בטיול (ריק = כל הימים – למשל 1 ליום אחד)</label>
@@ -489,14 +489,14 @@ function AddParticipantSection({
               placeholder="כל הימים"
               value={daysInTrip}
               onChange={(e) => setDaysInTrip(e.target.value.replace(/\D/g, ""))}
-              className="w-full border rounded-lg px-3 py-2 min-h-[44px]"
+              className="w-full input-dark px-3 py-2 min-h-[44px] tap-target"
             />
           </div>
           <div className="flex gap-2">
-            <button type="button" onClick={() => setShowForm(false)} className="flex-1 py-2 border rounded-lg">
+            <button type="button" onClick={() => setShowForm(false)} className="flex-1 btn-ghost py-2 tap-target">
               ביטול
             </button>
-            <button type="submit" disabled={saving} className="flex-1 bg-slate-800 text-white py-2 rounded-lg disabled:opacity-50">
+            <button type="submit" disabled={saving} className="flex-1 btn-neon py-2 tap-target disabled:opacity-50">
               {saving ? "שומר..." : "הוסף"}
             </button>
           </div>
@@ -509,20 +509,20 @@ function AddParticipantSection({
 function WhoPaysWhom({ settlements }: { settlements: { fromName: string; toName: string; amount: number }[] }) {
   if (settlements.length === 0) {
     return (
-      <div className="bg-[var(--card-bg)] border border-[var(--card-border)] rounded-xl shadow-sm p-4 mb-4">
+      <div className="glass-card p-4 mb-4 animate-fade-in opacity-0 animate-delay-2 [animation-fill-mode:forwards]">
         <h2 className="font-semibold mb-3 text-sm sm:text-base text-[var(--foreground)]">מי משלם למי</h2>
         <p className="text-[var(--muted)] text-sm">אין חובות לסגור – הכל מאוזן.</p>
       </div>
     );
   }
   return (
-    <div className="bg-[var(--card-bg)] border border-[var(--card-border)] rounded-xl shadow-sm p-4 mb-4">
+    <div className="glass-card p-4 mb-4 animate-fade-in opacity-0 animate-delay-2 [animation-fill-mode:forwards]">
       <h2 className="font-semibold mb-3 text-sm sm:text-base text-[var(--foreground)]">מי משלם למי</h2>
       <ul className="space-y-3">
         {settlements.map((s, i) => (
           <li
             key={i}
-            className="flex justify-between items-center py-3 border-b border-[var(--card-border)] last:border-0 gap-2 min-h-[44px]"
+            className="flex justify-between items-center py-3 border-b border-white/10 last:border-0 gap-2 min-h-[44px]"
           >
             <span className="text-sm sm:text-base break-words text-[var(--foreground)]">
               <strong>{s.fromName}</strong> משלם ל־<strong>{s.toName}</strong>
@@ -610,14 +610,14 @@ function AddExpenseScreen({ tripId, participants, onClose, onSaved }: AddExpense
   }
 
   return (
-    <div className="fixed inset-0 z-50 overflow-y-auto bg-black/50 flex items-center justify-center p-4">
-      <div className="bg-[var(--card-bg)] rounded-xl shadow-lg border border-[var(--card-border)] max-w-lg w-full max-h-[90vh] overflow-y-auto p-4 sm:p-6">
+    <div className="fixed inset-0 z-50 overflow-y-auto bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
+      <div className="glass-card-strong max-w-lg w-full max-h-[90vh] overflow-y-auto p-4 sm:p-6 animate-fade-in-up opacity-0 [animation-fill-mode:forwards]">
         <div className="flex justify-between items-center mb-4">
-          <h2 className="text-lg font-bold">הוספת הוצאה</h2>
+          <h2 className="text-lg font-semibold text-[var(--foreground)]">הוספת הוצאה</h2>
           <button
             type="button"
             onClick={onClose}
-            className="text-gray-500 hover:text-gray-700 p-2 tap-target"
+            className="text-[var(--muted)] hover:text-[var(--foreground)] p-2 tap-target transition-colors"
             aria-label="סגור"
           >
             ✕
@@ -625,7 +625,7 @@ function AddExpenseScreen({ tripId, participants, onClose, onSaved }: AddExpense
         </div>
 
         <div className="mb-4">
-          <label className="block text-sm text-gray-600 mb-1">העלאת קבלה (ניתוח AI)</label>
+          <label className="block text-sm text-[var(--muted)] mb-1">העלאת קבלה (ניתוח AI)</label>
           <div className="flex flex-col gap-3">
             <div className="flex flex-wrap gap-2">
               <input
@@ -654,14 +654,14 @@ function AddExpenseScreen({ tripId, participants, onClose, onSaved }: AddExpense
               <button
                 type="button"
                 onClick={() => receiptInputRef.current?.click()}
-                className="bg-slate-100 text-slate-700 px-4 py-3 rounded-xl text-sm min-h-[48px] tap-target border border-slate-300"
+                className="btn-ghost px-4 py-3 rounded-xl text-sm min-h-[48px] tap-target"
               >
                 בחר קובץ
               </button>
               <button
                 type="button"
                 onClick={() => receiptCameraRef.current?.click()}
-                className="bg-slate-100 text-slate-700 px-4 py-3 rounded-xl text-sm min-h-[48px] tap-target border border-slate-300"
+                className="btn-ghost px-4 py-3 rounded-xl text-sm min-h-[48px] tap-target"
               >
                 צלם קבלה
               </button>
@@ -669,30 +669,30 @@ function AddExpenseScreen({ tripId, participants, onClose, onSaved }: AddExpense
                 type="button"
                 onClick={analyzeReceipt}
                 disabled={!receiptFile || analyzing}
-                className="bg-slate-600 text-white px-4 py-3 rounded-xl text-sm min-h-[48px] tap-target disabled:opacity-50 shrink-0"
+                className="btn-neon px-4 py-3 rounded-xl text-sm min-h-[48px] tap-target disabled:opacity-50 shrink-0"
               >
                 {analyzing ? "מנתח..." : "נתח קבלה"}
               </button>
             </div>
             {receiptFile && (
-              <p className="text-sm text-gray-500">
+              <p className="text-sm text-[var(--muted)]">
                 נבחר: {receiptFile.name}
               </p>
             )}
           </div>
           {aiResult && (
-            <div className="mt-2 p-3 bg-slate-50 rounded-lg text-sm">
-              <p className="font-medium mb-1">תוצאות ניתוח – בדוק וערוך:</p>
-              <p>סכום: {aiResult.amount != null ? `${aiResult.amount} ₪` : "—"}</p>
-              <p>תאריך: {aiResult.date ?? "—"}</p>
-              <p>עסק: {aiResult.businessName ?? "—"}</p>
+            <div className="mt-2 p-3 glass-card rounded-lg text-sm">
+              <p className="font-medium mb-1 text-[var(--foreground)]">תוצאות ניתוח – בדוק וערוך:</p>
+              <p className="text-[var(--muted)]">סכום: {aiResult.amount != null ? `${aiResult.amount} ₪` : "—"}</p>
+              <p className="text-[var(--muted)]">תאריך: {aiResult.date ?? "—"}</p>
+              <p className="text-[var(--muted)]">עסק: {aiResult.businessName ?? "—"}</p>
             </div>
           )}
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="block text-sm text-gray-600 mb-1">סכום (₪) *</label>
+            <label className="block text-sm text-[var(--muted)] mb-1">סכום (₪) *</label>
             <input
               type="number"
               step="0.01"
@@ -700,16 +700,16 @@ function AddExpenseScreen({ tripId, participants, onClose, onSaved }: AddExpense
               inputMode="decimal"
               value={amount}
               onChange={(e) => setAmount(e.target.value)}
-              className="w-full border rounded-xl px-4 py-3 min-h-[48px]"
+              className="w-full input-dark px-4 py-3 min-h-[48px] tap-target"
               required
             />
           </div>
           <div>
-            <label className="block text-sm text-gray-600 mb-1">מי שילם *</label>
+            <label className="block text-sm text-[var(--muted)] mb-1">מי שילם *</label>
             <select
               value={paidById}
               onChange={(e) => setPaidById(e.target.value)}
-              className="w-full border rounded-xl px-4 py-3 min-h-[48px]"
+              className="w-full input-dark px-4 py-3 min-h-[48px] tap-target"
               required
             >
               <option value="">בחר משתתף</option>
@@ -721,45 +721,45 @@ function AddExpenseScreen({ tripId, participants, onClose, onSaved }: AddExpense
             </select>
           </div>
           <div>
-            <label className="block text-sm text-gray-600 mb-1">תיאור (אופציונלי)</label>
+            <label className="block text-sm text-[var(--muted)] mb-1">תיאור (אופציונלי)</label>
             <input
               type="text"
               placeholder="דלק, אוכל, לינה..."
               value={description}
               onChange={(e) => setDescription(e.target.value)}
-              className="w-full border rounded-xl px-4 py-3 min-h-[48px]"
+              className="w-full input-dark px-4 py-3 min-h-[48px] tap-target"
             />
           </div>
           <div>
-            <label className="block text-sm text-gray-600 mb-1">הערה (אופציונלי)</label>
+            <label className="block text-sm text-[var(--muted)] mb-1">הערה (אופציונלי)</label>
             <input
               type="text"
               value={note}
               onChange={(e) => setNote(e.target.value)}
-              className="w-full border rounded-xl px-4 py-3 min-h-[48px]"
+              className="w-full input-dark px-4 py-3 min-h-[48px] tap-target"
             />
           </div>
           <div>
-            <label className="block text-sm text-gray-600 mb-1">תאריך תשלום</label>
+            <label className="block text-sm text-[var(--muted)] mb-1">תאריך תשלום</label>
             <input
               type="date"
               value={paidAt}
               onChange={(e) => setPaidAt(e.target.value)}
-              className="w-full border rounded-xl px-4 py-3 min-h-[48px]"
+              className="w-full input-dark px-4 py-3 min-h-[48px] tap-target"
             />
           </div>
           <div className="flex gap-3 pt-2">
             <button
               type="button"
               onClick={onClose}
-              className="flex-1 py-3 rounded-xl border border-gray-300 font-medium"
+              className="flex-1 btn-ghost py-3 tap-target"
             >
               ביטול
             </button>
             <button
               type="submit"
               disabled={saving}
-              className="flex-1 bg-slate-800 text-white py-3 rounded-xl font-medium disabled:opacity-50"
+              className="flex-1 btn-neon-green py-3 tap-target disabled:opacity-50"
             >
               {saving ? "שומר..." : "שמור הוצאה"}
             </button>
@@ -791,9 +791,9 @@ function ExpensesList({
 
   if (payments.length === 0) return null;
   return (
-    <div className="mt-6 bg-[var(--card-bg)] border border-[var(--card-border)] rounded-xl shadow-sm overflow-hidden">
-      <h3 className="p-3 sm:p-4 font-semibold border-b border-[var(--card-border)] text-sm sm:text-base text-[var(--foreground)]">רשימת הוצאות</h3>
-      <ul className="divide-y divide-[var(--card-border)]">
+    <div className="mt-6 glass-card overflow-hidden animate-fade-in opacity-0 animate-delay-4 [animation-fill-mode:forwards]">
+      <h3 className="p-3 sm:p-4 font-semibold border-b border-white/10 text-sm sm:text-base text-[var(--foreground)]">רשימת הוצאות</h3>
+      <ul className="divide-y divide-white/10">
         {payments.map((p) => (
           <li key={p.id} className="p-4 flex justify-between items-start gap-3">
             <div className="min-w-0 flex-1">
@@ -808,7 +808,7 @@ function ExpensesList({
               type="button"
               onClick={() => deletePayment(p.id)}
               disabled={deletingId === p.id}
-              className="text-red-600 text-sm underline py-2 px-1 min-h-[44px] min-w-[44px] flex items-center justify-center tap-target shrink-0 disabled:opacity-50"
+              className="text-red-400 hover:text-red-300 text-sm underline py-2 px-1 min-h-[44px] min-w-[44px] flex items-center justify-center tap-target shrink-0 disabled:opacity-50 transition-colors"
             >
               מחק
             </button>

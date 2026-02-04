@@ -1,13 +1,20 @@
 @import "tailwindcss";
 
+/* ========== Dark Mode Premium + Neon ========== */
 :root {
-  --background: #fafbfc;
-  --foreground: #1e293b;
-  --green: #16a34a;
-  --red: #b91c1c;
-  --card-bg: #ffffff;
-  --card-border: #e2e8f0;
-  --muted: #64748b;
+  --background: #0a0a0f;
+  --foreground: #e2e8f0;
+  --muted: #94a3b8;
+  --card-bg: rgba(255, 255, 255, 0.06);
+  --card-border: rgba(255, 255, 255, 0.08);
+  --glass-bg: rgba(255, 255, 255, 0.05);
+  --glass-border: rgba(255, 255, 255, 0.1);
+  --neon-blue: #3b82f6;
+  --neon-purple: #8b5cf6;
+  --neon-cyan: #06b6d4;
+  --accent: #6366f1;
+  --green: #22c55e;
+  --red: #ef4444;
   --safe-top: env(safe-area-inset-top, 0px);
   --safe-bottom: env(safe-area-inset-bottom, 0px);
   --safe-left: env(safe-area-inset-left, 0px);
@@ -17,14 +24,14 @@
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
+  --font-sans: var(--font-display);
   --font-mono: var(--font-geist-mono);
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-display), system-ui, sans-serif;
   padding-left: var(--safe-left);
   padding-right: var(--safe-right);
   padding-bottom: var(--safe-bottom);
@@ -33,6 +40,135 @@ body {
 [dir="rtl"] {
   text-align: right;
 }
+
+/* ========== Glassmorphism ========== */
+.glass-card {
+  background: var(--glass-bg);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid var(--glass-border);
+  border-radius: 1rem;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+}
+
+.glass-card-strong {
+  background: rgba(255, 255, 255, 0.08);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 1rem;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+}
+
+/* ========== Neon Buttons ========== */
+.btn-neon {
+  background: linear-gradient(135deg, var(--neon-blue) 0%, var(--neon-purple) 100%);
+  color: white;
+  font-weight: 500;
+  border: none;
+  border-radius: 0.75rem;
+  box-shadow: 0 0 20px rgba(99, 102, 241, 0.4), 0 0 40px rgba(139, 92, 246, 0.2);
+  transition: transform 0.2s ease, box-shadow 0.2s ease, filter 0.2s ease;
+}
+.btn-neon:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 0 28px rgba(99, 102, 241, 0.5), 0 0 50px rgba(139, 92, 246, 0.3);
+  filter: brightness(1.1);
+}
+.btn-neon:active:not(:disabled) {
+  transform: translateY(0);
+}
+
+.btn-neon-green {
+  background: linear-gradient(135deg, #16a34a 0%, #22c55e 100%);
+  color: white;
+  font-weight: 500;
+  border: none;
+  border-radius: 0.75rem;
+  box-shadow: 0 0 20px rgba(34, 197, 94, 0.35);
+  transition: transform 0.2s ease, box-shadow 0.2s ease, filter 0.2s ease;
+}
+.btn-neon-green:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 0 28px rgba(34, 197, 94, 0.5);
+  filter: brightness(1.1);
+}
+.btn-neon-green:active:not(:disabled) {
+  transform: translateY(0);
+}
+
+.btn-ghost {
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--foreground);
+  border: 1px solid var(--glass-border);
+  border-radius: 0.75rem;
+  transition: transform 0.2s ease, background 0.2s ease, box-shadow 0.2s ease;
+}
+.btn-ghost:hover {
+  background: rgba(255, 255, 255, 0.1);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+}
+
+/* ========== Inputs Dark ========== */
+.input-dark {
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid var(--glass-border);
+  border-radius: 0.75rem;
+  color: var(--foreground);
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+.input-dark::placeholder {
+  color: var(--muted);
+}
+.input-dark:focus {
+  outline: none;
+  border-color: var(--neon-blue);
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2);
+}
+
+select.input-dark {
+  cursor: pointer;
+}
+select.input-dark option {
+  background: var(--background);
+  color: var(--foreground);
+}
+
+/* ========== Animations ========== */
+@keyframes fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes fade-in-up {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fade-in {
+  animation: fade-in 0.4s ease-out forwards;
+}
+.animate-fade-in-up {
+  animation: fade-in-up 0.5s ease-out forwards;
+}
+
+.animate-delay-1 { animation-delay: 0.1s; }
+.animate-delay-2 { animation-delay: 0.2s; }
+.animate-delay-3 { animation-delay: 0.3s; }
+.animate-delay-4 { animation-delay: 0.4s; }
 
 /* מינימום 16px בכניסות כדי למנוע זום אוטומטי ב-iOS */
 input, select, textarea, button {

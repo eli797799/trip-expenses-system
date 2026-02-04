@@ -110,21 +110,21 @@ export default function HomePage() {
 
   return (
     <div className="min-h-screen p-4 pt-[max(1rem,var(--safe-top))] pb-6 md:p-8 max-w-lg mx-auto">
-      <h1 className="text-xl sm:text-2xl font-bold text-center mb-6 sm:mb-8">
+      <h1 className="text-xl sm:text-2xl font-semibold text-center mb-6 sm:mb-8 text-[var(--foreground)] animate-fade-in opacity-0 [animation-fill-mode:forwards]">
         ניהול הוצאות טיול קבוצתי
       </h1>
 
       {!supabase && (
-        <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 mb-6 text-amber-800 text-sm">
-          הגדר <code className="bg-amber-100 px-1 rounded">NEXT_PUBLIC_SUPABASE_URL</code> ו־
-          <code className="bg-amber-100 px-1 rounded">NEXT_PUBLIC_SUPABASE_ANON_KEY</code> ב־.env.local
+        <div className="glass-card p-4 mb-6 text-amber-300 text-sm border-amber-500/30 animate-fade-in opacity-0 animate-delay-1 [animation-fill-mode:forwards]">
+          הגדר <code className="bg-white/10 px-1 rounded">NEXT_PUBLIC_SUPABASE_URL</code> ו־
+          <code className="bg-white/10 px-1 rounded">NEXT_PUBLIC_SUPABASE_ANON_KEY</code> ב־.env.local
         </div>
       )}
 
       {/* כניסה לטיול – הפעולה הראשית */}
-      <section className="bg-white rounded-xl shadow-sm border border-slate-100 p-4 sm:p-6 mb-4 sm:mb-6">
-        <h2 className="text-base sm:text-lg font-semibold mb-3 sm:mb-4 text-slate-800">כניסה לטיול</h2>
-        <p className="text-slate-600 text-sm mb-3">
+      <section className="glass-card p-4 sm:p-6 mb-4 sm:mb-6 animate-fade-in opacity-0 animate-delay-1 [animation-fill-mode:forwards]">
+        <h2 className="text-base sm:text-lg font-semibold mb-3 sm:mb-4 text-[var(--foreground)]">כניסה לטיול</h2>
+        <p className="text-[var(--muted)] text-sm mb-3">
           יש לך קישור? הדבק כאן או הזן קוד – תיכנס אוטומטית לטיול.
         </p>
         <form onSubmit={handleJoin} className="flex flex-col gap-3">
@@ -133,14 +133,14 @@ export default function HomePage() {
             placeholder="הדבק קישור לטיול או הזן קוד (4 ספרות)"
             value={linkOrCode}
             onChange={(e) => setLinkOrCode(e.target.value)}
-            className="flex-1 border border-gray-300 rounded-xl px-4 py-3.5 text-lg min-h-[48px]"
+            className="flex-1 input-dark px-4 py-3.5 text-lg min-h-[48px] tap-target"
             dir="ltr"
             aria-label="קישור או קוד טיול"
           />
-          {error && <p className="text-red-600 text-sm">{error}</p>}
+          {error && <p className="text-red-400 text-sm">{error}</p>}
           <button
             type="submit"
-            className="bg-slate-800 text-white px-6 py-3.5 rounded-xl font-medium min-h-[48px] tap-target shrink-0"
+            className="btn-neon px-6 py-3.5 min-h-[48px] tap-target shrink-0"
           >
             כניסה לטיול
           </button>
@@ -148,55 +148,55 @@ export default function HomePage() {
       </section>
 
       {/* צור טיול – משני, מתקפל */}
-      <section className="bg-white rounded-xl shadow-sm border border-slate-100 p-4 sm:p-6">
+      <section className="glass-card p-4 sm:p-6 animate-fade-in opacity-0 animate-delay-2 [animation-fill-mode:forwards]">
         <button
           type="button"
           onClick={() => setShowCreateForm((v) => !v)}
-          className="w-full text-right text-slate-600 hover:text-slate-800 font-medium py-2 tap-target"
+          className="w-full text-right text-[var(--muted)] hover:text-[var(--foreground)] font-medium py-2 tap-target transition-colors"
           aria-expanded={showCreateForm}
         >
           {showCreateForm ? "▼ הסתר" : "אין לך קישור? צור טיול חדש"}
         </button>
         {showCreateForm && (
           <>
-            {error && <p className="text-red-600 text-sm mb-2">{error}</p>}
+            {error && <p className="text-red-400 text-sm mb-2">{error}</p>}
             <form onSubmit={handleCreate} className="space-y-4 mt-4">
               <div>
-                <label className="block text-sm text-gray-600 mb-1">שם הטיול *</label>
+                <label className="block text-sm text-[var(--muted)] mb-1">שם הטיול *</label>
                 <input
                   type="text"
                   placeholder="למשל: טיול לצפון, נופש אילת"
                   value={name}
                   onChange={(e) => setName(e.target.value)}
-                  className="w-full border border-gray-300 rounded-xl px-4 py-3 min-h-[48px]"
+                  className="w-full input-dark px-4 py-3 min-h-[48px] tap-target"
                   required
                   aria-label="שם הטיול"
                 />
               </div>
               <div className="grid grid-cols-2 gap-3 sm:gap-4">
                 <div>
-                  <label className="block text-sm text-gray-600 mb-1">תאריך התחלה</label>
+                  <label className="block text-sm text-[var(--muted)] mb-1">תאריך התחלה</label>
                   <input
                     type="date"
                     value={startDate}
                     onChange={(e) => setStartDate(e.target.value)}
-                    className="w-full border border-gray-300 rounded-xl px-4 py-3 min-h-[48px]"
+                    className="w-full input-dark px-4 py-3 min-h-[48px] tap-target"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm text-gray-600 mb-1">תאריך סיום</label>
+                  <label className="block text-sm text-[var(--muted)] mb-1">תאריך סיום</label>
                   <input
                     type="date"
                     value={endDate}
                     onChange={(e) => setEndDate(e.target.value)}
-                    className="w-full border border-gray-300 rounded-xl px-4 py-3 min-h-[48px]"
+                    className="w-full input-dark px-4 py-3 min-h-[48px] tap-target"
                   />
                 </div>
               </div>
               <button
                 type="submit"
                 disabled={creating || !supabase}
-                className="w-full bg-emerald-600 text-white py-3.5 rounded-xl font-medium min-h-[48px] tap-target disabled:opacity-50"
+                className="w-full btn-neon-green py-3.5 min-h-[48px] tap-target disabled:opacity-50"
               >
                 {creating ? "יוצר ומגריל קוד..." : "צור טיול"}
               </button>
@@ -205,7 +205,7 @@ export default function HomePage() {
         )}
       </section>
 
-      <p className="text-center text-gray-500 text-sm mt-4 sm:mt-6 px-1">
+      <p className="text-center text-[var(--muted)] text-sm mt-4 sm:mt-6 px-1 animate-fade-in opacity-0 animate-delay-3 [animation-fill-mode:forwards]">
         כל מי שבטיול מקבל קישור – לחיצה על הקישור מכניסה אוטומטית לטיול.
       </p>
     </div>

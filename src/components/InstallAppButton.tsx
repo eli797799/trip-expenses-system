@@ -21,7 +21,7 @@ export function InstallAppButton() {
     return (
       <a
         href="/"
-        className="text-slate-500 text-sm py-2 px-3 rounded-lg border border-slate-200 tap-target hover:bg-slate-50"
+        className="text-[var(--muted)] hover:text-[var(--foreground)] text-sm py-2 px-3 rounded-lg border border-white/10 tap-target hover:bg-white/5 transition-all"
         title="הוסף למסך הבית"
       >
         הורד אפליקציה
@@ -32,7 +32,7 @@ export function InstallAppButton() {
     <button
       type="button"
       onClick={() => deferredPrompt.prompt().then(() => setDeferredPrompt(null))}
-      className="text-slate-600 text-sm py-2 px-3 rounded-lg border border-slate-200 tap-target hover:bg-slate-50 font-medium"
+      className="text-[var(--foreground)] text-sm py-2 px-3 rounded-lg border border-white/10 tap-target hover:bg-white/5 hover:border-[var(--neon-blue)]/50 font-medium transition-all"
     >
       הורד אפליקציה
     </button>
