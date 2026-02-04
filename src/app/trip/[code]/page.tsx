@@ -121,6 +121,61 @@ export default function TripPage() {
     return localStorage.getItem(VIEW_STORAGE_KEY + code) === "1";
   }
 
+  function hideAmounts() {
+    if (typeof window === "undefined" || !code) return;
+    localStorage.removeItem(VIEW_STORAGE_KEY + code);
+    setPaymentUnlocked(false);
+  }
+
+  function downloadExcel() {
+    if (!trip || !summary) return;
+    const BOM = "\uFEFF";
+    const rows: string[] = [];
+    const csv = (cells: (string | number)[]) =>
+      cells.map((c) => `"${String(c).replace(/"/g, '""')}"`).join(",");
+
+    rows.push("סיכום טיול");
+    rows.push(csv(["סך הוצאות (₪)", "משתתפים", "ממוצע למשתתף (₪)"]));
+    rows.push(csv([summary.total.toFixed(2), summary.participantCount, summary.averagePerPerson.toFixed(2)]));
+    rows.push("");
+
+    rows.push("פירוט משתתפים – כמה כל אחד צריך לשלם");
+    rows.push(csv(["שם", "שילם (₪)", "צפוי (₪)", "הפרש (₪)"]));
+    summary.balances.forEach((b) => {
+      rows.push(csv([b.nickname || b.name, b.paid.toFixed(2), b.expected.toFixed(2), b.diff.toFixed(2)]));
+    });
+    rows.push("");
+
+    rows.push("הוצאות");
+    rows.push(csv(["#", "תאריך", "סכום (₪)", "שילם", "תיאור"]));
+    trip.payments.forEach((p, i) => {
+      rows.push(
+        csv([
+          i + 1,
+          new Date(p.paid_at).toLocaleDateString("he-IL"),
+          Number(p.amount).toFixed(2),
+          p.payer?.nickname || p.payer?.name || "?",
+          p.description || "",
+        ])
+      );
+    });
+    rows.push("");
+
+    rows.push("העברות – מי משלם למי");
+    rows.push(csv(["מ", "אל", "סכום (₪)"]));
+    summary.settlements.forEach((s) => {
+      rows.push(csv([s.fromName, s.toName, s.amount.toFixed(2)]));
+    });
+
+    const blob = new Blob([BOM + rows.join("\r\n")], { type: "text/csv;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `טיול-${trip.name.replace(/[^\w\s-]/g, "")}-${trip.trip_code}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
   async function verifyViewCode(entered: string) {
     setVerifyingCode(true);
     setViewCodeError("");
@@ -400,6 +455,25 @@ export default function TripPage() {
           </div>
         </div>
       </div>
+
+      {paymentUnlocked && (
+        <div className="flex flex-wrap gap-2 mb-4 animate-fade-in opacity-0 animate-delay-2 [animation-fill-mode:forwards]">
+          <button
+            type="button"
+            onClick={hideAmounts}
+            className="btn-ghost px-4 py-3 rounded-xl min-h-[44px] tap-target text-[var(--muted)] hover:text-[var(--foreground)] border border-white/10"
+          >
+            הסתר סכומים
+          </button>
+          <button
+            type="button"
+            onClick={downloadExcel}
+            className="btn-neon px-4 py-3 rounded-xl min-h-[44px] tap-target"
+          >
+            הורד Excel (CSV)
+          </button>
+        </div>
+      )}
 
       <AddParticipantSection
         tripId={trip.id}
