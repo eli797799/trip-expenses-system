@@ -5,6 +5,7 @@ import { useParams } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase";
 import { computeBalances, computeSettlements } from "@/lib/balance";
+import { InstallAppButton } from "@/components/InstallAppButton";
 import type { TripRow, ParticipantRow, PaymentRow } from "@/types/database";
 
 type Participant = {
