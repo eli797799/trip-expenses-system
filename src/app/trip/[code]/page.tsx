@@ -113,8 +113,12 @@ export default function TripPage() {
   const [viewCodeError, setViewCodeError] = useState("");
   const [dynamicQuote, setDynamicQuote] = useState<string | null>(null);
   const [quoteLoading, setQuoteLoading] = useState(false);
+  const [showSendNotification, setShowSendNotification] = useState(false);
+  const [notificationMsg, setNotificationMsg] = useState("");
+  const [sendingNotification, setSendingNotification] = useState(false);
 
   const VIEW_STORAGE_KEY = "trip_view_";
+  const VIEW_CODE_VALUE_KEY = "trip_view_code_";
 
   function checkPaymentUnlocked() {
     if (typeof window === "undefined" || !code) return false;
@@ -124,6 +128,7 @@ export default function TripPage() {
   function hideAmounts() {
     if (typeof window === "undefined" || !code) return;
     localStorage.removeItem(VIEW_STORAGE_KEY + code);
+    localStorage.removeItem(VIEW_CODE_VALUE_KEY + code);
     setPaymentUnlocked(false);
   }
 
@@ -188,6 +193,7 @@ export default function TripPage() {
       const data = (await res.json()) as { ok?: boolean };
       if (data.ok) {
         localStorage.setItem(VIEW_STORAGE_KEY + code, "1");
+        if (entered) localStorage.setItem(VIEW_CODE_VALUE_KEY + code, entered);
         setPaymentUnlocked(true);
         setViewCodeInput("");
       } else {
@@ -338,6 +344,7 @@ export default function TripPage() {
         .then((data: { ok?: boolean }) => {
           if (data.ok) {
             localStorage.setItem(VIEW_STORAGE_KEY + code, "1");
+            localStorage.setItem(VIEW_CODE_VALUE_KEY + code, viewCodeFromUrl);
             setPaymentUnlocked(true);
           }
         });
@@ -348,6 +355,80 @@ export default function TripPage() {
   useEffect(() => {
     refresh();
   }, [code]);
+
+  // בקשת אישור התראות אוטומטית – מיד בכניסה לדף הטיול
+  useEffect(() => {
+    if (!trip || typeof window === "undefined" || !("Notification" in window) || !("serviceWorker" in navigator)) return;
+    const vapidPublic = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
+    if (!vapidPublic) return;
+
+    const subscribe = async () => {
+      if (Notification.permission === "denied") return;
+      if (Notification.permission === "default") {
+        await Notification.requestPermission();
+      }
+      if (Notification.permission !== "granted") return;
+
+      try {
+        const reg = await navigator.serviceWorker.ready;
+        const sub = await reg.pushManager.getSubscription();
+        let subscription = sub;
+        if (!subscription) {
+          subscription = await reg.pushManager.subscribe({
+            userVisibleOnly: true,
+            applicationServerKey: vapidPublic,
+          });
+        }
+        if (subscription) {
+          const subJson = subscription.toJSON();
+          await fetch("/api/push/subscribe", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              tripId: trip.id,
+              subscription: {
+                endpoint: subJson.endpoint,
+                keys: subJson.keys,
+              },
+            }),
+          });
+        }
+      } catch {
+        // ignore
+      }
+    };
+    subscribe();
+  }, [trip?.id]);
+
+  async function sendNotification() {
+    if (!trip || !notificationMsg.trim()) return;
+    const viewCode = typeof window !== "undefined" ? localStorage.getItem(VIEW_CODE_VALUE_KEY + code) : null;
+    setSendingNotification(true);
+    try {
+      const res = await fetch("/api/push/send", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          tripCode: code,
+          viewCode: viewCode || "",
+          title: trip.name,
+          body: notificationMsg.trim(),
+        }),
+      });
+      const data = (await res.json()) as { sent?: number; error?: string };
+      if (data.error) {
+        alert(data.error);
+        return;
+      }
+      alert(`נשלח ל־${data.sent ?? 0} מנויים`);
+      setShowSendNotification(false);
+      setNotificationMsg("");
+    } catch (e) {
+      alert(e instanceof Error ? e.message : "שגיאה");
+    } finally {
+      setSendingNotification(false);
+    }
+  }
 
   if (loading && !trip) {
     return (
@@ -467,11 +548,53 @@ export default function TripPage() {
           </button>
           <button
             type="button"
-            onClick={downloadExcel}
+            onClick={() => setShowSendNotification(true)}
             className="btn-neon px-4 py-3 rounded-xl min-h-[44px] tap-target"
+          >
+            שלח התראה
+          </button>
+          <button
+            type="button"
+            onClick={downloadExcel}
+            className="btn-ghost px-4 py-3 rounded-xl min-h-[44px] tap-target text-[var(--foreground)] border border-white/10"
           >
             הורד Excel (CSV)
           </button>
+        </div>
+      )}
+
+      {showSendNotification && (
+        <div className="fixed inset-0 z-50 overflow-y-auto bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="glass-card-strong max-w-lg w-full p-4 sm:p-6 animate-fade-in-up opacity-0 [animation-fill-mode:forwards]">
+            <h2 className="text-lg font-semibold mb-3 text-[var(--foreground)]">שליחת התראה לכל המנויים</h2>
+            <p className="text-sm text-[var(--muted)] mb-4">
+              ההתראה תישלח לכל מי שאישר קבלת התראות בטיול זה.
+            </p>
+            <textarea
+              value={notificationMsg}
+              onChange={(e) => setNotificationMsg(e.target.value)}
+              placeholder="הטקסט שיוצג בהתראה..."
+              rows={4}
+              className="w-full input-dark px-3 py-3 mb-4 tap-target resize-none"
+            />
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={() => { setShowSendNotification(false); setNotificationMsg(""); }}
+                className="flex-1 btn-ghost py-3 tap-target"
+              >
+                ביטול
+              </button>
+              <button
+                type="button"
+                onClick={sendNotification}
+                disabled={sendingNotification || !notificationMsg.trim()}
+                className="flex-1 btn-neon py-3 tap-target disabled:opacity-50"
+              >
+                {sendingNotification ? "שולח..." : "שלח"}
+              </button>
+            </div>
+          </div>
         </div>
       )}
 

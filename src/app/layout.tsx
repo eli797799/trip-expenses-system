@@ -3,6 +3,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { Plus_Jakarta_Sans, Geist_Mono } from "next/font/google";
 import { InstallAppButton } from "@/components/InstallAppButton";
+import { PushSetup } from "@/components/PushSetup";
 import "./globals.css";
 
 const plusJakarta = Plus_Jakarta_Sans({
@@ -55,6 +56,7 @@ export default function RootLayout({
             <span className="font-semibold text-[var(--foreground)] tracking-tight">ניהול הוצאות טיול</span>
           </Link>
         </header>
+        <PushSetup />
         <main className="flex-1">{children}</main>
         <footer className="text-center text-[var(--muted)] text-sm py-3 px-2 border-t border-white/10 flex flex-col items-center gap-2 bg-white/[0.02]">
           <InstallAppButton />

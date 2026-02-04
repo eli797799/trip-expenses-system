@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 
+export const maxDuration = 60;
+export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
 const CORS_HEADERS = {
@@ -58,11 +60,20 @@ async function analyzeWithGemini(
     throw errObj;
   }
 
-  const data = (await res.json()) as {
-    candidates?: { content?: { parts?: { text?: string }[] } }[];
-  };
-  const text =
-    data.candidates?.[0]?.content?.parts?.[0]?.text?.trim() || "";
+  type GeminiResponse = { candidates?: { content?: { parts?: { text?: string }[] } }[] };
+  let data: GeminiResponse;
+  try {
+    data = (await res.json()) as GeminiResponse;
+  } catch (parseErr) {
+    console.error("Gemini response parse error – לא JSON תקין:", parseErr);
+    throw new Error("Gemini response invalid");
+  }
+
+  const text = data.candidates?.[0]?.content?.parts?.[0]?.text?.trim() || "";
+  if (!text) {
+    console.error("Gemini response – אין טקסט ב-candidates:", JSON.stringify(data).slice(0, 500));
+    throw new Error("Gemini returned empty text");
+  }
   return parseReceiptJson(text);
 }
 
@@ -117,14 +128,17 @@ function parseReceiptJson(content: string): ReceiptAnalysis {
     date: null,
     businessName: null,
   };
+  let raw = content.trim();
+  const jsonMatch = raw.match(/```(?:json)?\s*([\s\S]*?)```/);
+  if (jsonMatch) raw = jsonMatch[1].trim();
   try {
-    const parsed = JSON.parse(content) as Record<string, unknown>;
+    const parsed = JSON.parse(raw) as Record<string, unknown>;
     if (typeof parsed.amount === "number") result.amount = parsed.amount;
     if (typeof parsed.date === "string") result.date = parsed.date;
     if (typeof parsed.businessName === "string")
       result.businessName = parsed.businessName || null;
-  } catch {
-    // keep defaults
+  } catch (parseErr) {
+    console.error("parseReceiptJson – שגיאה בפענוח JSON מתשובת Gemini:", parseErr, "raw:", raw.slice(0, 200));
   }
   return result;
 }
@@ -140,7 +154,7 @@ export async function POST(request: NextRequest) {
     if (!file || !file.type.startsWith("image/")) {
       return NextResponse.json(
         { error: "נא להעלות קובץ תמונה (קבלה)", debugCode: "INVALID_FILE" },
-        { status: 400 }
+        { status: 400, headers: CORS_HEADERS }
       );
     }
 
@@ -160,7 +174,7 @@ export async function POST(request: NextRequest) {
           message: "ניתוח IA לא מוגדר. הזן סכום, תאריך ותיאור ידנית.",
           debugCode: "NO_API_KEY",
         },
-        { status: 200 }
+        { status: 200, headers: CORS_HEADERS }
       );
     }
 
@@ -174,6 +188,7 @@ export async function POST(request: NextRequest) {
         result = { amount: null, date: null, businessName: null };
       }
     } catch (err) {
+      console.error("Receipt AI failed:", err);
       const debugCode = (err as Error & { debugCode?: string }).debugCode ?? "AI_ANALYSIS_FAILED";
       return NextResponse.json(
         {
@@ -183,22 +198,22 @@ export async function POST(request: NextRequest) {
           message: "ניתוח IA נכשל. הזן נתונים ידנית.",
           debugCode,
         },
-        { status: 200 }
+        { status: 200, headers: CORS_HEADERS }
       );
     }
 
-    return NextResponse.json(result);
+    return NextResponse.json(result, { headers: CORS_HEADERS });
   } catch (e) {
-    console.error(e);
-    return NextResponse.json(
-      {
-        amount: null,
-        date: null,
-        businessName: null,
-        message: "שגיאה בניתוח קבלה.",
-        debugCode: "UPLOAD_OR_SERVER_ERROR",
-      },
-      { status: 200 }
-    );
+    console.error("Receipt analyze route error:", e);
+      return NextResponse.json(
+        {
+          amount: null,
+          date: null,
+          businessName: null,
+          message: "שגיאה בניתוח קבלה.",
+          debugCode: "UPLOAD_OR_SERVER_ERROR",
+        },
+        { status: 200, headers: CORS_HEADERS }
+      );
   }
 }
