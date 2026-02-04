@@ -1,0 +1,45 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Trip {
+  id          String   @id @default(cuid())
+  name        String
+  code        String   @unique
+  startDate   DateTime?
+  endDate     DateTime?
+  createdAt   DateTime @default(now())
+
+  participants Participant[]
+  payments     Payment[]
+}
+
+model Participant {
+  id        String   @id @default(cuid())
+  tripId    String
+  name      String
+  nickname  String?
+  isAdmin   Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  trip            Trip      @relation(fields: [tripId], references: [id], onDelete: Cascade)
+  paymentsMade    Payment[] @relation("PaidBy")
+}
+
+model Payment {
+  id          String    @id @default(cuid())
+  tripId      String
+  amount      Float
+  paidById    String
+  description String?
+  note        String?
+  paidAt      DateTime  @default(now())
+
+  trip   Trip        @relation(fields: [tripId], references: [id], onDelete: Cascade)
+  paidBy Participant @relation("PaidBy", fields: [paidById], references: [id], onDelete: Cascade)
+}
