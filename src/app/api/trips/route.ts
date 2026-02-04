@@ -1,8 +1,26 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
+import { createClient } from "@/lib/supabase";
 
 function randomCode(): string {
   return String(Math.floor(1000 + Math.random() * 9000));
+}
+
+export async function GET() {
+  try {
+    const supabase = createClient();
+    const { data, error } = await supabase
+      .from("trips")
+      .select("id, trip_code, name, start_date, end_date, created_at")
+      .order("created_at", { ascending: false });
+    if (error) {
+      return NextResponse.json({ error: error.message }, { status: 500 });
+    }
+    return NextResponse.json(data ?? []);
+  } catch (e) {
+    console.error(e);
+    return NextResponse.json({ error: "שגיאה בטעינת טיולים" }, { status: 500 });
+  }
 }
 
 export async function POST(request: NextRequest) {

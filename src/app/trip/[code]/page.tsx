@@ -622,13 +622,12 @@ function AddExpenseScreen({ tripId, participants, onClose, onSaved }: AddExpense
   const [saving, setSaving] = useState(false);
   const [aiResult, setAiResult] = useState<{ amount: number | null; date: string | null; businessName: string | null } | null>(null);
 
-  async function analyzeReceipt() {
-    if (!receiptFile) return;
+  async function analyzeReceiptWithFile(file: File) {
     setAnalyzing(true);
     setAiResult(null);
     try {
       const form = new FormData();
-      form.append("file", receiptFile);
+      form.append("file", file);
       const res = await fetch("/api/receipt-analyze", { method: "POST", body: form });
       const data = await res.json();
       setAiResult({
@@ -644,6 +643,16 @@ function AddExpenseScreen({ tripId, participants, onClose, onSaved }: AddExpense
     } finally {
       setAnalyzing(false);
     }
+  }
+
+  async function analyzeReceipt() {
+    if (receiptFile) await analyzeReceiptWithFile(receiptFile);
+  }
+
+  function onReceiptFileSelected(file: File | null) {
+    setReceiptFile(file);
+    setAiResult(null);
+    if (file) analyzeReceiptWithFile(file);
   }
 
   async function handleSubmit(e: React.FormEvent) {
@@ -693,16 +702,14 @@ function AddExpenseScreen({ tripId, participants, onClose, onSaved }: AddExpense
 
         <div className="mb-4">
           <label className="block text-sm text-[var(--muted)] mb-1">העלאת קבלה (ניתוח AI)</label>
+          <p className="text-xs text-[var(--muted)] mb-2">בחירה או צילום קבלה ימלאו אוטומטית את הסכום, התאריך והתיאור.</p>
           <div className="flex flex-col gap-3">
             <div className="flex flex-wrap gap-2">
               <input
                 type="file"
                 accept="image/*"
                 ref={receiptInputRef}
-                onChange={(e) => {
-                  setReceiptFile(e.target.files?.[0] ?? null);
-                  setAiResult(null);
-                }}
+                onChange={(e) => onReceiptFileSelected(e.target.files?.[0] ?? null)}
                 className="hidden"
                 aria-hidden
               />
@@ -711,10 +718,7 @@ function AddExpenseScreen({ tripId, participants, onClose, onSaved }: AddExpense
                 accept="image/*"
                 capture="environment"
                 ref={receiptCameraRef}
-                onChange={(e) => {
-                  setReceiptFile(e.target.files?.[0] ?? null);
-                  setAiResult(null);
-                }}
+                onChange={(e) => onReceiptFileSelected(e.target.files?.[0] ?? null)}
                 className="hidden"
                 aria-hidden
               />

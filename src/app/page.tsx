@@ -12,6 +12,15 @@ function getSupabaseClient() {
   }
 }
 
+type TripRow = {
+  id: string;
+  trip_code: string;
+  name: string;
+  start_date: string | null;
+  end_date: string | null;
+  created_at: string;
+};
+
 export default function HomePage() {
   const [name, setName] = useState("");
   const [startDate, setStartDate] = useState("");
@@ -20,6 +29,8 @@ export default function HomePage() {
   const [creating, setCreating] = useState(false);
   const [error, setError] = useState("");
   const [showCreateForm, setShowCreateForm] = useState(true);
+  const [trips, setTrips] = useState<TripRow[]>([]);
+  const [tripsLoading, setTripsLoading] = useState(true);
 
   async function generateUniqueTripCode(): Promise<string> {
     const supabase = getSupabaseClient();
@@ -88,6 +99,26 @@ export default function HomePage() {
     }
   }, []);
 
+  // טעינת רשימת הטיולים הקיימים (דרך API – עובד גם עם RLS)
+  useEffect(() => {
+    fetch("/api/trips")
+      .then((res) => (res.ok ? res.json() : []))
+      .then((data) => {
+        setTrips(Array.isArray(data) ? data : []);
+      })
+      .catch(() => setTrips([]))
+      .finally(() => setTripsLoading(false));
+  }, []);
+
+  function formatTripDate(d: string | null) {
+    if (!d) return "";
+    try {
+      return new Date(d + "Z").toLocaleDateString("he-IL", { day: "numeric", month: "short", year: "numeric" });
+    } catch {
+      return d;
+    }
+  }
+
   return (
     <div className="min-h-screen p-4 pt-[max(1rem,var(--safe-top))] pb-6 md:p-8 max-w-lg mx-auto">
       <h1 className="text-xl sm:text-2xl font-semibold text-center mb-6 sm:mb-8 text-[var(--foreground)] animate-fade-in opacity-0 [animation-fill-mode:forwards]">
@@ -99,6 +130,35 @@ export default function HomePage() {
           הגדר <code className="bg-white/10 px-1 rounded">NEXT_PUBLIC_SUPABASE_URL</code> ו־
           <code className="bg-white/10 px-1 rounded">NEXT_PUBLIC_SUPABASE_ANON_KEY</code> ב־.env.local
         </div>
+      )}
+
+      {/* טיולים קיימים – כניסה בלי קוד */}
+      {supabase && (
+        <section className="glass-card p-4 sm:p-6 mb-6 animate-fade-in opacity-0 animate-delay-1 [animation-fill-mode:forwards]">
+          <h2 className="text-base font-semibold text-[var(--foreground)] mb-3">טיולים קיימים</h2>
+          {tripsLoading ? (
+            <p className="text-sm text-[var(--muted)]">טוען...</p>
+          ) : trips.length === 0 ? (
+            <p className="text-sm text-[var(--muted)]">אין עדיין טיולים. צור טיול חדש למטה.</p>
+          ) : (
+            <ul className="space-y-2">
+              {trips.map((t) => (
+                <li key={t.id}>
+                  <Link
+                    href={`/trip/${t.trip_code}`}
+                    className="flex items-center justify-between gap-3 p-3 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 hover:border-white/20 transition-colors tap-target"
+                  >
+                    <span className="font-medium text-[var(--foreground)] truncate">{t.name}</span>
+                    <span className="text-xs text-[var(--muted)] shrink-0">
+                      {t.start_date || t.end_date ? formatTripDate(t.start_date || t.end_date) : `קוד ${t.trip_code}`}
+                    </span>
+                    <span className="text-[var(--neon)]" aria-hidden>←</span>
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          )}
+        </section>
       )}
 
       {/* צור טיול חדש */}
@@ -175,7 +235,7 @@ export default function HomePage() {
       </section>
 
       <p className="text-center text-[var(--muted)] text-sm mt-4 sm:mt-6 px-1 animate-fade-in opacity-0 animate-delay-2 [animation-fill-mode:forwards]">
-        לכניסה לטיול – לחץ על הקישור שקיבלת (אין צורך להזין קוד).
+        לכניסה לטיול – בחר טיול מהרשימה למעלה או לחץ על הקישור שקיבלת. אין צורך להזין קוד.
       </p>
     </div>
   );
