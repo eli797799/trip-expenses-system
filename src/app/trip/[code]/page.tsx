@@ -83,11 +83,12 @@ function computeSummary(
     amount: s.amount,
   }));
   const totalDays = paidByParticipant.reduce((s, p) => s + p.days, 0);
+  const participantCount = participants.length;
   return {
     total: Math.round(total * 100) / 100,
-    participantCount: participants.length,
+    participantCount,
     averagePerPerson:
-      totalDays > 0 ? Math.round((total / totalDays) * 100) / 100 : 0,
+      participantCount > 0 ? Math.round((total / participantCount) * 100) / 100 : 0,
     balances: balances.map((b) => ({
       ...b,
       paid: Math.round(b.paid * 100) / 100,
@@ -340,6 +341,9 @@ export default function TripPage() {
           className={`transition-all duration-500 ease-out ${!paymentUnlocked ? "blur-[20px] select-none" : "blur-0"}`}
         >
           <TripHomeSummary summary={summary} />
+          {paymentUnlocked && summary && (
+            <ParticipantBreakdown balances={summary.balances} />
+          )}
           <WhoPaysWhom settlements={summary?.settlements ?? []} />
         </div>
         <div
@@ -446,7 +450,7 @@ function TripHomeSummary({ summary }: { summary: Summary | null }) {
       </div>
       <div>
         <p className="text-lg sm:text-2xl font-semibold text-[var(--foreground)]">{summary.averagePerPerson.toFixed(2)} ₪</p>
-        <p className="text-xs sm:text-sm text-[var(--muted)]">למשתתף</p>
+        <p className="text-xs sm:text-sm text-[var(--muted)]">ממוצע למשתתף</p>
       </div>
     </div>
   );
@@ -632,6 +636,27 @@ function AddParticipantSection({
           </div>
         </form>
       )}
+    </div>
+  );
+}
+
+function ParticipantBreakdown({ balances }: { balances: Summary["balances"] }) {
+  if (!balances.length) return null;
+  return (
+    <div className="glass-card p-4 mb-4 animate-fade-in opacity-0 animate-delay-2 [animation-fill-mode:forwards]">
+      <h2 className="font-semibold mb-3 text-sm sm:text-base text-[var(--foreground)]">פירוט לפי משתתף – כמה כל אחד צריך לשלם (פר־ראטה לפי ימים)</h2>
+      <ul className="space-y-2">
+        {balances.map((b) => (
+          <li key={b.participantId} className="flex justify-between items-center py-2 border-b border-white/10 last:border-0 gap-2">
+            <span className="text-sm sm:text-base text-[var(--foreground)]">
+              {b.nickname || b.name}
+            </span>
+            <span className="font-semibold text-base shrink-0 text-[var(--neon)]">
+              ₪{b.expected.toFixed(2)}
+            </span>
+          </li>
+        ))}
+      </ul>
     </div>
   );
 }
@@ -946,9 +971,10 @@ function ExpensesList({
     <div className="mt-6 glass-card overflow-hidden animate-fade-in opacity-0 animate-delay-4 [animation-fill-mode:forwards]">
       <h3 className="p-3 sm:p-4 font-semibold border-b border-white/10 text-sm sm:text-base text-[var(--foreground)]">רשימת הוצאות</h3>
       <ul className="divide-y divide-white/10">
-        {payments.map((p) => (
+        {payments.map((p, index) => (
           <li key={p.id} className="p-4 flex justify-between items-start gap-3">
             <div className="min-w-0 flex-1">
+              <p className="text-xs text-[var(--muted)] mb-0.5">#{index + 1}</p>
               <p className="font-semibold text-base sm:text-lg text-[var(--foreground)]">{Number(p.amount).toFixed(2)} ₪</p>
               <p className="text-[var(--muted)] text-sm sm:text-base">{p.payer.nickname || p.payer.name}</p>
               {p.description && <p className="text-sm text-[var(--muted)] truncate">{p.description}</p>}

@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 
+export const runtime = "nodejs";
+
 const FRIENDS_CONTEXT = `הרקע על החברים (לשימוש בהומור בלבד):
 - אלי: בנה את התוכנה ומצלם הכל.
 - אהרון: מארצות הברית, חייב סדר בכל דבר (הוא זה שאומר "בטיול לא מחשבנים כסף, בטיול נהנים").
