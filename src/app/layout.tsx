@@ -16,6 +16,7 @@ export const metadata: Metadata = {
   title: "ניהול הוצאות טיול",
   description: "ניהול הוצאות משותפות בטיול קבוצתי",
   appleWebApp: { capable: true, statusBarStyle: "default", title: "הוצאות טיול" },
+  manifest: "/manifest.json",
 };
 
 export const viewport: Viewport = {
@@ -35,9 +36,12 @@ export default function RootLayout({
   return (
     <html lang="he" dir="rtl">
       <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased min-h-screen touch-manipulation`}
+        className={`${geistSans.variable} ${geistMono.variable} antialiased min-h-screen touch-manipulation flex flex-col`}
       >
-        {children}
+        <main className="flex-1">{children}</main>
+        <footer className="text-center text-gray-500 text-sm py-3 px-2 border-t border-gray-100">
+          ניבנה ע&quot;י אלי לבין
+        </footer>
       </body>
     </html>
   );

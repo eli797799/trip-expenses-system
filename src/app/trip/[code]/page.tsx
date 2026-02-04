@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase";
@@ -405,6 +405,8 @@ function AddExpenseScreen({ tripId, participants, onClose, onSaved }: AddExpense
   const [paidAt, setPaidAt] = useState("");
   const [receiptFile, setReceiptFile] = useState<File | null>(null);
   const [analyzing, setAnalyzing] = useState(false);
+  const receiptInputRef = useRef<HTMLInputElement | null>(null);
+  const receiptCameraRef = useRef<HTMLInputElement | null>(null);
   const [saving, setSaving] = useState(false);
   const [aiResult, setAiResult] = useState<{ amount: number | null; date: string | null; businessName: string | null } | null>(null);
 
@@ -479,25 +481,59 @@ function AddExpenseScreen({ tripId, participants, onClose, onSaved }: AddExpense
 
         <div className="mb-4">
           <label className="block text-sm text-gray-600 mb-1">העלאת קבלה (ניתוח AI)</label>
-          <div className="flex flex-col sm:flex-row gap-3">
-            <input
-              type="file"
-              accept="image/*"
-              capture="environment"
-              onChange={(e) => {
-                setReceiptFile(e.target.files?.[0] ?? null);
-                setAiResult(null);
-              }}
-              className="flex-1 border rounded-xl px-4 py-3 min-h-[48px] file:mr-2 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-slate-100 file:text-slate-700"
-            />
-            <button
-              type="button"
-              onClick={analyzeReceipt}
-              disabled={!receiptFile || analyzing}
-              className="bg-slate-600 text-white px-4 py-3 rounded-xl text-sm min-h-[48px] tap-target disabled:opacity-50 shrink-0"
-            >
-              {analyzing ? "מנתח..." : "נתח קבלה"}
-            </button>
+          <div className="flex flex-col gap-3">
+            <div className="flex flex-wrap gap-2">
+              <input
+                type="file"
+                accept="image/*"
+                ref={receiptInputRef}
+                onChange={(e) => {
+                  setReceiptFile(e.target.files?.[0] ?? null);
+                  setAiResult(null);
+                }}
+                className="hidden"
+                aria-hidden
+              />
+              <input
+                type="file"
+                accept="image/*"
+                capture="environment"
+                ref={receiptCameraRef}
+                onChange={(e) => {
+                  setReceiptFile(e.target.files?.[0] ?? null);
+                  setAiResult(null);
+                }}
+                className="hidden"
+                aria-hidden
+              />
+              <button
+                type="button"
+                onClick={() => receiptInputRef.current?.click()}
+                className="bg-slate-100 text-slate-700 px-4 py-3 rounded-xl text-sm min-h-[48px] tap-target border border-slate-300"
+              >
+                בחר קובץ
+              </button>
+              <button
+                type="button"
+                onClick={() => receiptCameraRef.current?.click()}
+                className="bg-slate-100 text-slate-700 px-4 py-3 rounded-xl text-sm min-h-[48px] tap-target border border-slate-300"
+              >
+                צלם קבלה
+              </button>
+              <button
+                type="button"
+                onClick={analyzeReceipt}
+                disabled={!receiptFile || analyzing}
+                className="bg-slate-600 text-white px-4 py-3 rounded-xl text-sm min-h-[48px] tap-target disabled:opacity-50 shrink-0"
+              >
+                {analyzing ? "מנתח..." : "נתח קבלה"}
+              </button>
+            </div>
+            {receiptFile && (
+              <p className="text-sm text-gray-500">
+                נבחר: {receiptFile.name}
+              </p>
+            )}
           </div>
           {aiResult && (
             <div className="mt-2 p-3 bg-slate-50 rounded-lg text-sm">

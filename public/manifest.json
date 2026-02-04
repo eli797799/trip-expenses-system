@@ -1,0 +1,20 @@
+{
+  "name": "ניהול הוצאות טיול",
+  "short_name": "הוצאות טיול",
+  "description": "ניהול הוצאות משותפות בטיול קבוצתי",
+  "start_url": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#ffffff",
+  "theme_color": "#0f172a",
+  "lang": "he",
+  "dir": "rtl",
+  "icons": [
+    {
+      "src": "/next.svg",
+      "sizes": "394x80",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ]
+}
