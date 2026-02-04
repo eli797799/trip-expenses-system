@@ -152,7 +152,7 @@ export default function TripPage() {
                 nickname: payer.nickname,
                 is_admin: payer.is_admin,
               }
-            : { id: p.paid_by_id, name: "?", nickname: null, is_admin: false };
+            : { id: p.paid_by_id, name: "?", nickname: null, is_admin: false },
         };
       });
 
