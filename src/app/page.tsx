@@ -29,6 +29,7 @@ export default function HomePage() {
   const [name, setName] = useState("");
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
+  const [viewCodeCustom, setViewCodeCustom] = useState("");
   const [creating, setCreating] = useState(false);
   const [error, setError] = useState("");
   const [showCreateForm, setShowCreateForm] = useState(false);
@@ -63,7 +64,10 @@ export default function HomePage() {
       }
 
       const tripCode = await generateUniqueTripCode();
-      const viewCode = String(Math.floor(1000 + Math.random() * 9000));
+      const viewCode =
+        viewCodeCustom.trim().replace(/\D/g, "").length === 4
+          ? viewCodeCustom.trim().replace(/\D/g, "").slice(0, 4)
+          : String(Math.floor(1000 + Math.random() * 9000));
       const { error: insertError } = await supabase.from("trips").insert({
         trip_code: tripCode,
         name: name.trim(),
@@ -76,7 +80,7 @@ export default function HomePage() {
         setError(insertError.message || "שגיאה ביצירת טיול");
         return;
       }
-      alert(`קוד צפייה בסכומים: ${viewCode}\nשמור אותו – רק איתו אפשר לראות סך הוצאות ומי משלם למי.`);
+      alert(`קוד צפייה בסכומים: ${viewCode}\nשמור אותו – רק למי שיש את הקוד ${viewCode} תהיה גישה ל"כמה עלה הטיול" ו"מי משלם למי".`);
       window.location.href = `/trip/${tripCode}?view_code=${viewCode}`;
     } catch (err) {
       setError(err instanceof Error ? err.message : "שגיאה ביצירת טיול");
@@ -192,6 +196,21 @@ export default function HomePage() {
                     className="w-full input-dark px-4 py-3 min-h-[48px] tap-target"
                   />
                 </div>
+              </div>
+              <div>
+                <label className="block text-sm text-[var(--muted)] mb-1">קוד צפייה בסכומים (4 ספרות, אופציונלי)</label>
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  pattern="[0-9]*"
+                  placeholder="ריק = אקראי. למשל 3215 – רק למי שיש את הקוד תהיה גישה"
+                  value={viewCodeCustom}
+                  onChange={(e) => setViewCodeCustom(e.target.value.replace(/\D/g, "").slice(0, 4))}
+                  className="w-full input-dark px-4 py-3 min-h-[48px] tap-target"
+                  dir="ltr"
+                  maxLength={4}
+                  aria-label="קוד צפייה"
+                />
               </div>
               <button
                 type="submit"

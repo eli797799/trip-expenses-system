@@ -20,6 +20,10 @@ export async function GET(
     }
 
     const total = trip.payments.reduce((s, p) => s + p.amount, 0);
+    const tripDays =
+      trip.startDate && trip.endDate
+        ? Math.max(1, Math.ceil((trip.endDate.getTime() - trip.startDate.getTime()) / (24 * 60 * 60 * 1000)) + 1)
+        : 1;
     const paidByParticipant = trip.participants.map((p) => ({
       participantId: p.id,
       name: p.name,
@@ -27,13 +31,10 @@ export async function GET(
       sum: trip.payments
         .filter((pay) => pay.paidById === p.id)
         .reduce((s, pay) => s + pay.amount, 0),
+      days: tripDays,
     }));
 
-    const balances = computeBalances(
-      total,
-      trip.participants.length,
-      paidByParticipant
-    );
+    const balances = computeBalances(total, paidByParticipant);
     const settlements = computeSettlements(balances);
 
     return NextResponse.json({
