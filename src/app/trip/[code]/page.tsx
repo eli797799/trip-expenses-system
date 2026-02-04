@@ -413,7 +413,31 @@ function AddParticipantSection({
   const [nickname, setNickname] = useState("");
   const [daysInTrip, setDaysInTrip] = useState("");
   const [saving, setSaving] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editingDays, setEditingDays] = useState("");
+  const [savingEdit, setSavingEdit] = useState(false);
   const supabase = getSupabaseClient();
+
+  async function handleSaveDays(participantId: string) {
+    if (!supabase) return;
+    setSavingEdit(true);
+    try {
+      const days = editingDays.trim() ? parseInt(editingDays.trim(), 10) : null;
+      const { error } = await supabase
+        .from("participants")
+        .update({ days_in_trip: days != null && !Number.isNaN(days) && days >= 1 ? days : null })
+        .eq("id", participantId);
+      if (error) {
+        alert(error.message);
+        return;
+      }
+      setEditingId(null);
+      setEditingDays("");
+      onAdded();
+    } finally {
+      setSavingEdit(false);
+    }
+  }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -446,13 +470,55 @@ function AddParticipantSection({
     <div className="mt-6 glass-card p-4 animate-fade-in opacity-0 animate-delay-3 [animation-fill-mode:forwards]">
       <h3 className="font-semibold mb-2 text-sm sm:text-base text-[var(--foreground)]">משתתפים ({participants.length})</h3>
       {participants.length > 0 && (
-        <ul className="text-sm text-[var(--muted)] mb-3 space-y-1">
+        <ul className="text-sm text-[var(--muted)] mb-3 space-y-2">
           {participants.map((p) => (
-            <li key={p.id}>
-              {p.nickname || p.name}
-              {p.days_in_trip != null && p.days_in_trip >= 1 ? (
-                <span className="text-[var(--foreground)]"> ({p.days_in_trip} {p.days_in_trip === 1 ? "יום" : "ימים"})</span>
-              ) : null}
+            <li key={p.id} className="flex flex-wrap items-center gap-2">
+              <span>
+                {p.nickname || p.name}
+                {editingId !== p.id && (
+                  p.days_in_trip != null && p.days_in_trip >= 1 ? (
+                    <span className="text-[var(--foreground)]"> ({p.days_in_trip} {p.days_in_trip === 1 ? "יום" : "ימים"})</span>
+                  ) : (
+                    <span className="text-[var(--muted)]"> (כל הימים)</span>
+                  )
+                )}
+              </span>
+              {editingId === p.id ? (
+                <span className="flex flex-wrap items-center gap-2">
+                  <input
+                    type="number"
+                    min={1}
+                    placeholder="כל הימים"
+                    value={editingDays}
+                    onChange={(e) => setEditingDays(e.target.value.replace(/\D/g, ""))}
+                    className="input-dark w-24 px-2 py-1.5 min-h-[36px] text-sm tap-target"
+                    dir="ltr"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => handleSaveDays(p.id)}
+                    disabled={savingEdit}
+                    className="text-[var(--neon-blue)] text-xs font-medium tap-target disabled:opacity-50"
+                  >
+                    {savingEdit ? "שומר..." : "שמור"}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => { setEditingId(null); setEditingDays(""); }}
+                    className="text-[var(--muted)] text-xs tap-target"
+                  >
+                    ביטול
+                  </button>
+                </span>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => { setEditingId(p.id); setEditingDays(p.days_in_trip != null ? String(p.days_in_trip) : ""); }}
+                  className="text-[var(--neon-cyan)] hover:text-[var(--neon-blue)] text-xs font-medium tap-target transition-colors"
+                >
+                  ערוך ימים
+                </button>
+              )}
             </li>
           ))}
         </ul>

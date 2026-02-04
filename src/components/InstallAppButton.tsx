@@ -24,13 +24,21 @@ export function InstallAppButton() {
   if (installed) return null;
   if (!deferredPrompt) {
     return (
-      <a
-        href="/"
+      <button
+        type="button"
+        onClick={() =>
+          alert(
+            "הוספה למסך הבית:\n\n" +
+              "• Chrome (אנדרואיד): תפריט ⋮ → \"הוסף למסך הבית\" או \"התקן אפליקציה\"\n\n" +
+              "• Safari (iPhone/iPad): כפתור שתף ↓ → \"הוסף למסך הבית\"\n\n" +
+              "• במחשב: בדפדפן לחץ על אייקון ההתקנה בשורת הכתובת (אם מופיע)."
+          )
+        }
         className="text-[var(--muted)] hover:text-[var(--foreground)] text-sm py-2 px-3 rounded-lg border border-white/10 tap-target hover:bg-white/5 transition-all"
-        title="הוסף למסך הבית"
+        title="הוראות הוספה למסך הבית"
       >
         הורד אפליקציה
-      </a>
+      </button>
     );
   }
   return (
