@@ -17,18 +17,32 @@ export type Settlement = {
 
 export function computeBalances(
   totalAmount: number,
-  participantCount: number,
-  paidByParticipant: { participantId: string; name: string; nickname: string | null; sum: number }[]
+  paidByParticipant: { participantId: string; name: string; nickname: string | null; sum: number; days: number }[]
 ): ParticipantBalance[] {
-  const expected = participantCount > 0 ? totalAmount / participantCount : 0;
-  return paidByParticipant.map((p) => ({
-    participantId: p.participantId,
-    name: p.name,
-    nickname: p.nickname,
-    paid: p.sum,
-    expected,
-    diff: p.sum - expected,
-  }));
+  const totalDays = paidByParticipant.reduce((s, p) => s + Math.max(1, p.days || 1), 0);
+  if (totalDays <= 0) {
+    const expected = paidByParticipant.length > 0 ? totalAmount / paidByParticipant.length : 0;
+    return paidByParticipant.map((p) => ({
+      participantId: p.participantId,
+      name: p.name,
+      nickname: p.nickname,
+      paid: p.sum,
+      expected,
+      diff: p.sum - expected,
+    }));
+  }
+  return paidByParticipant.map((p) => {
+    const days = Math.max(1, p.days || 1);
+    const expected = (totalAmount * days) / totalDays;
+    return {
+      participantId: p.participantId,
+      name: p.name,
+      nickname: p.nickname,
+      paid: p.sum,
+      expected,
+      diff: p.sum - expected,
+    };
+  });
 }
 
 export function computeSettlements(balances: ParticipantBalance[]): Settlement[] {

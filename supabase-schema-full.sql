@@ -20,6 +20,7 @@ CREATE TABLE trips (
   name        text NOT NULL,
   start_date  date,
   end_date    date,
+  view_code   text,
   created_at  timestamptz NOT NULL DEFAULT now()
 );
 
@@ -27,13 +28,14 @@ CREATE TABLE trips (
 -- טבלת משתתפים
 -- ----------------------------------------
 CREATE TABLE participants (
-  id         uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  trip_id    uuid NOT NULL REFERENCES trips(id) ON DELETE CASCADE,
-  user_id    uuid,
-  name       text NOT NULL,
-  nickname   text,
-  is_admin   boolean NOT NULL DEFAULT false,
-  created_at timestamptz NOT NULL DEFAULT now()
+  id            uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  trip_id       uuid NOT NULL REFERENCES trips(id) ON DELETE CASCADE,
+  user_id       uuid,
+  name          text NOT NULL,
+  nickname      text,
+  is_admin      boolean NOT NULL DEFAULT false,
+  days_in_trip  integer,
+  created_at    timestamptz NOT NULL DEFAULT now()
 );
 
 CREATE INDEX idx_participants_trip_id ON participants(trip_id);
@@ -74,4 +76,6 @@ CREATE INDEX idx_payments_paid_by_id ON payments(paid_by_id);
 /*
 ALTER TABLE trips ADD COLUMN IF NOT EXISTS start_date date;
 ALTER TABLE trips ADD COLUMN IF NOT EXISTS end_date date;
+ALTER TABLE trips ADD COLUMN IF NOT EXISTS view_code text;
+ALTER TABLE participants ADD COLUMN IF NOT EXISTS days_in_trip integer;
 */

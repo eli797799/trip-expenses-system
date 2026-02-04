@@ -19,6 +19,8 @@ export type ParticipantRow = {
   name: string;
   nickname: string | null;
   is_admin: boolean;
+  /** מספר ימים בטיול – null/undefined = כל הימים (לפי תאריכי הטיול) */
+  days_in_trip?: number | null;
   created_at: string;
 };
 

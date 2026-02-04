@@ -49,25 +49,44 @@ function getSupabaseClient() {
   }
 }
 
-function computeSummary(participants: ParticipantRow[], payments: PaymentWithPayer[]): Summary {
+function getTripDays(startDate: string | null, endDate: string | null): number {
+  if (!startDate || !endDate) return 1;
+  const start = new Date(startDate).getTime();
+  const end = new Date(endDate).getTime();
+  if (end < start) return 1;
+  return Math.max(1, Math.ceil((end - start) / (24 * 60 * 60 * 1000)) + 1);
+}
+
+function computeSummary(
+  participants: ParticipantRow[],
+  payments: PaymentWithPayer[],
+  startDate: string | null,
+  endDate: string | null
+): Summary {
   const total = payments.reduce((s, p) => s + Number(p.amount), 0);
-  const paidByParticipant = participants.map((p) => ({
-    participantId: p.id,
-    name: p.name,
-    nickname: p.nickname,
-    sum: payments.filter((pay) => pay.paid_by_id === p.id).reduce((s, pay) => s + Number(pay.amount), 0),
-  }));
-  const balances = computeBalances(total, participants.length, paidByParticipant);
+  const tripDays = getTripDays(startDate, endDate);
+  const paidByParticipant = participants.map((p) => {
+    const effectiveDays = p.days_in_trip != null ? Math.max(1, p.days_in_trip) : tripDays;
+    return {
+      participantId: p.id,
+      name: p.name,
+      nickname: p.nickname,
+      sum: payments.filter((pay) => pay.paid_by_id === p.id).reduce((s, pay) => s + Number(pay.amount), 0),
+      days: effectiveDays,
+    };
+  });
+  const balances = computeBalances(total, paidByParticipant);
   const settlements = computeSettlements(balances).map((s) => ({
     fromName: s.fromName,
     toName: s.toName,
     amount: s.amount,
   }));
+  const totalDays = paidByParticipant.reduce((s, p) => s + p.days, 0);
   return {
     total: Math.round(total * 100) / 100,
     participantCount: participants.length,
     averagePerPerson:
-      participants.length > 0 ? Math.round((total / participants.length) * 100) / 100 : 0,
+      totalDays > 0 ? Math.round((total / totalDays) * 100) / 100 : 0,
     balances: balances.map((b) => ({
       ...b,
       paid: Math.round(b.paid * 100) / 100,
@@ -86,6 +105,41 @@ export default function TripPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [showAddExpense, setShowAddExpense] = useState(false);
+  const [paymentUnlocked, setPaymentUnlocked] = useState(false);
+  const [viewCodeInput, setViewCodeInput] = useState("");
+  const [verifyingCode, setVerifyingCode] = useState(false);
+  const [viewCodeError, setViewCodeError] = useState("");
+
+  const VIEW_STORAGE_KEY = "trip_view_";
+
+  function checkPaymentUnlocked() {
+    if (typeof window === "undefined" || !code) return false;
+    return localStorage.getItem(VIEW_STORAGE_KEY + code) === "1";
+  }
+
+  async function verifyViewCode(entered: string) {
+    setVerifyingCode(true);
+    setViewCodeError("");
+    try {
+      const res = await fetch(`/api/trips/${code}/verify-view`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ code: entered }),
+      });
+      const data = (await res.json()) as { ok?: boolean };
+      if (data.ok) {
+        localStorage.setItem(VIEW_STORAGE_KEY + code, "1");
+        setPaymentUnlocked(true);
+        setViewCodeInput("");
+      } else {
+        setViewCodeError("קוד לא נכון");
+      }
+    } catch {
+      setViewCodeError("שגיאה בבדיקה");
+    } finally {
+      setVerifyingCode(false);
+    }
+  }
 
   async function refresh() {
     if (!code) return;
@@ -99,7 +153,7 @@ export default function TripPage() {
     try {
       const { data: tripRow, error: tripErr } = await supabase
         .from("trips")
-        .select("*")
+        .select("id, trip_code, name, start_date, end_date, created_at")
         .eq("trip_code", code)
         .single();
 
@@ -167,7 +221,12 @@ export default function TripPage() {
         payments: paymentsWithPayer,
       });
       setSummary(
-        computeSummary(participantsList, paymentsWithPayer)
+        computeSummary(
+          participantsList,
+          paymentsWithPayer,
+          (tripRow as TripRow).start_date,
+          (tripRow as TripRow).end_date
+        )
       );
     } catch (e) {
       setError(e instanceof Error ? e.message : "שגיאה בטעינה");
@@ -177,6 +236,31 @@ export default function TripPage() {
       setLoading(false);
     }
   }
+
+  useEffect(() => {
+    setPaymentUnlocked(checkPaymentUnlocked());
+  }, [code]);
+
+  useEffect(() => {
+    if (!code || typeof window === "undefined") return;
+    const params = new URLSearchParams(window.location.search);
+    const viewCodeFromUrl = params.get("view_code");
+    if (viewCodeFromUrl) {
+      fetch(`/api/trips/${code}/verify-view`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ code: viewCodeFromUrl }),
+      })
+        .then((r) => r.json())
+        .then((data: { ok?: boolean }) => {
+          if (data.ok) {
+            localStorage.setItem(VIEW_STORAGE_KEY + code, "1");
+            setPaymentUnlocked(true);
+          }
+        });
+      window.history.replaceState({}, "", window.location.pathname);
+    }
+  }, [code]);
 
   useEffect(() => {
     refresh();
@@ -202,27 +286,68 @@ export default function TripPage() {
   }
 
   return (
-    <div className="min-h-screen p-4 pb-8 md:p-6 max-w-2xl mx-auto">
-      <div className="flex items-center justify-between mb-3 sm:mb-4 gap-2">
-        <Link href="/" className="text-slate-600 text-sm underline py-2 tap-target shrink-0">
+    <div className="min-h-screen p-4 pb-8 md:p-6 max-w-2xl mx-auto bg-[var(--background)]">
+      <div className="flex items-center justify-between mb-3 sm:mb-4 gap-2 flex-wrap">
+        <Link href="/" className="text-slate-500 text-sm underline py-2 tap-target shrink-0 hover:text-slate-700">
           ← דף הבית
         </Link>
-        <span className="text-slate-500 text-sm font-mono truncate" dir="ltr">
-          קוד: {trip.trip_code}
-        </span>
+        <div className="flex items-center gap-2">
+          <InstallAppButton />
+          <span className="text-slate-400 text-sm font-mono truncate" dir="ltr">
+            קוד: {trip.trip_code}
+          </span>
+        </div>
       </div>
 
-      <h1 className="text-lg sm:text-xl font-bold mb-1 sm:mb-2 break-words">{trip.name}</h1>
+      <h1 className="text-lg sm:text-xl font-semibold mb-1 sm:mb-2 break-words text-[var(--foreground)]">{trip.name}</h1>
       {(trip.start_date || trip.end_date) && (
-        <p className="text-gray-500 text-sm mb-4">
+        <p className="text-[var(--muted)] text-sm mb-4">
           {trip.start_date && new Date(trip.start_date).toLocaleDateString("he-IL")}
           {trip.start_date && trip.end_date && " – "}
           {trip.end_date && new Date(trip.end_date).toLocaleDateString("he-IL")}
         </p>
       )}
 
-      <TripHomeSummary summary={summary} />
-      <WhoPaysWhom settlements={summary?.settlements ?? []} />
+      {paymentUnlocked ? (
+        <>
+          <TripHomeSummary summary={summary} />
+          <WhoPaysWhom settlements={summary?.settlements ?? []} />
+        </>
+      ) : (
+        <div className="bg-[var(--card-bg)] border border-[var(--card-border)] rounded-xl p-4 sm:p-5 mb-4 shadow-sm">
+          <h2 className="font-semibold mb-2 text-sm sm:text-base text-[var(--foreground)]">צפייה בסכומים</h2>
+          <p className="text-[var(--muted)] text-sm mb-3">
+            רק למי שיש את קוד הצפייה – הזן קוד (או השאר ריק בטיולים ישנים) כדי לראות סך הוצאות ומי משלם למי.
+          </p>
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              verifyViewCode(viewCodeInput);
+            }}
+            className="flex flex-col sm:flex-row gap-2"
+          >
+            <input
+              type="text"
+              inputMode="numeric"
+              pattern="[0-9]*"
+              placeholder="קוד צפייה (4 ספרות)"
+              value={viewCodeInput}
+              onChange={(e) => setViewCodeInput(e.target.value.replace(/\D/g, "").slice(0, 4))}
+              className="flex-1 border border-[var(--card-border)] rounded-lg px-4 py-3 min-h-[44px] text-[var(--foreground)]"
+              dir="ltr"
+              maxLength={4}
+            />
+            <button
+              type="submit"
+              disabled={verifyingCode}
+              className="bg-slate-700 text-white px-4 py-3 rounded-lg font-medium min-h-[44px] tap-target disabled:opacity-50 shrink-0"
+            >
+              {verifyingCode ? "בודק..." : "הצג סכומים"}
+            </button>
+          </form>
+          {viewCodeError && <p className="text-red-500 text-sm mt-2">{viewCodeError}</p>}
+        </div>
+      )}
 
       <AddParticipantSection tripId={trip.id} participants={trip.participants} onAdded={refresh} />
 
@@ -230,7 +355,7 @@ export default function TripPage() {
         <button
           type="button"
           onClick={() => setShowAddExpense(true)}
-          className="w-full bg-emerald-600 text-white py-3.5 rounded-xl font-medium min-h-[48px] tap-target"
+          className="w-full bg-[var(--green)] text-white py-3.5 rounded-xl font-medium min-h-[48px] tap-target shadow-sm hover:opacity-95"
         >
           + הוסף הוצאה
         </button>
@@ -256,18 +381,18 @@ export default function TripPage() {
 function TripHomeSummary({ summary }: { summary: Summary | null }) {
   if (!summary) return null;
   return (
-    <div className="bg-white rounded-xl shadow p-4 grid grid-cols-3 gap-2 sm:gap-4 text-center mb-4">
+    <div className="bg-[var(--card-bg)] border border-[var(--card-border)] rounded-xl shadow-sm p-4 grid grid-cols-3 gap-2 sm:gap-4 text-center mb-4">
       <div>
-        <p className="text-lg sm:text-2xl font-bold">{summary.total.toFixed(2)} ₪</p>
-        <p className="text-xs sm:text-sm text-gray-500">סך ההוצאות</p>
+        <p className="text-lg sm:text-2xl font-semibold text-[var(--foreground)]">{summary.total.toFixed(2)} ₪</p>
+        <p className="text-xs sm:text-sm text-[var(--muted)]">סך ההוצאות</p>
       </div>
       <div>
-        <p className="text-lg sm:text-2xl font-bold">{summary.participantCount}</p>
-        <p className="text-xs sm:text-sm text-gray-500">משתתפים</p>
+        <p className="text-lg sm:text-2xl font-semibold text-[var(--foreground)]">{summary.participantCount}</p>
+        <p className="text-xs sm:text-sm text-[var(--muted)]">משתתפים</p>
       </div>
       <div>
-        <p className="text-lg sm:text-2xl font-bold">{summary.averagePerPerson.toFixed(2)} ₪</p>
-        <p className="text-xs sm:text-sm text-gray-500">למשתתף</p>
+        <p className="text-lg sm:text-2xl font-semibold text-[var(--foreground)]">{summary.averagePerPerson.toFixed(2)} ₪</p>
+        <p className="text-xs sm:text-sm text-[var(--muted)]">למשתתף</p>
       </div>
     </div>
   );
@@ -285,6 +410,7 @@ function AddParticipantSection({
   const [showForm, setShowForm] = useState(false);
   const [name, setName] = useState("");
   const [nickname, setNickname] = useState("");
+  const [daysInTrip, setDaysInTrip] = useState("");
   const [saving, setSaving] = useState(false);
   const supabase = getSupabaseClient();
 
@@ -293,11 +419,13 @@ function AddParticipantSection({
     if (!name.trim() || !supabase) return;
     setSaving(true);
     try {
+      const days = daysInTrip.trim() ? parseInt(daysInTrip.trim(), 10) : null;
       const { error } = await supabase.from("participants").insert({
         trip_id: tripId,
         name: name.trim(),
         nickname: nickname.trim() || null,
         is_admin: false,
+        days_in_trip: days != null && !Number.isNaN(days) && days >= 1 ? days : null,
       });
       if (error) {
         alert(error.message);
@@ -305,6 +433,7 @@ function AddParticipantSection({
       }
       setName("");
       setNickname("");
+      setDaysInTrip("");
       setShowForm(false);
       onAdded();
     } finally {
@@ -313,12 +442,17 @@ function AddParticipantSection({
   }
 
   return (
-    <div className="mt-6 bg-white rounded-xl shadow p-4">
-      <h3 className="font-semibold mb-2 text-sm sm:text-base">משתתפים ({participants.length})</h3>
+    <div className="mt-6 bg-[var(--card-bg)] border border-[var(--card-border)] rounded-xl shadow-sm p-4">
+      <h3 className="font-semibold mb-2 text-sm sm:text-base text-[var(--foreground)]">משתתפים ({participants.length})</h3>
       {participants.length > 0 && (
-        <ul className="text-sm text-gray-600 mb-3">
+        <ul className="text-sm text-[var(--muted)] mb-3 space-y-1">
           {participants.map((p) => (
-            <li key={p.id}>{p.nickname || p.name}</li>
+            <li key={p.id}>
+              {p.nickname || p.name}
+              {p.days_in_trip != null && p.days_in_trip >= 1 ? (
+                <span className="text-[var(--foreground)]"> ({p.days_in_trip} {p.days_in_trip === 1 ? "יום" : "ימים"})</span>
+              ) : null}
+            </li>
           ))}
         </ul>
       )}
@@ -347,6 +481,17 @@ function AddParticipantSection({
             onChange={(e) => setNickname(e.target.value)}
             className="w-full border rounded-lg px-3 py-2 min-h-[44px]"
           />
+          <div>
+            <label className="block text-xs text-[var(--muted)] mb-1">ימים בטיול (ריק = כל הימים – למשל 1 ליום אחד)</label>
+            <input
+              type="number"
+              min={1}
+              placeholder="כל הימים"
+              value={daysInTrip}
+              onChange={(e) => setDaysInTrip(e.target.value.replace(/\D/g, ""))}
+              className="w-full border rounded-lg px-3 py-2 min-h-[44px]"
+            />
+          </div>
           <div className="flex gap-2">
             <button type="button" onClick={() => setShowForm(false)} className="flex-1 py-2 border rounded-lg">
               ביטול
@@ -364,25 +509,25 @@ function AddParticipantSection({
 function WhoPaysWhom({ settlements }: { settlements: { fromName: string; toName: string; amount: number }[] }) {
   if (settlements.length === 0) {
     return (
-      <div className="bg-white rounded-xl shadow p-4">
-        <h2 className="font-semibold mb-3 text-sm sm:text-base">מי משלם למי</h2>
-        <p className="text-gray-500 text-sm">אין חובות לסגור – הכל מאוזן.</p>
+      <div className="bg-[var(--card-bg)] border border-[var(--card-border)] rounded-xl shadow-sm p-4 mb-4">
+        <h2 className="font-semibold mb-3 text-sm sm:text-base text-[var(--foreground)]">מי משלם למי</h2>
+        <p className="text-[var(--muted)] text-sm">אין חובות לסגור – הכל מאוזן.</p>
       </div>
     );
   }
   return (
-    <div className="bg-white rounded-xl shadow p-4">
-      <h2 className="font-semibold mb-3 text-sm sm:text-base">מי משלם למי</h2>
+    <div className="bg-[var(--card-bg)] border border-[var(--card-border)] rounded-xl shadow-sm p-4 mb-4">
+      <h2 className="font-semibold mb-3 text-sm sm:text-base text-[var(--foreground)]">מי משלם למי</h2>
       <ul className="space-y-3">
         {settlements.map((s, i) => (
           <li
             key={i}
-            className="flex justify-between items-center py-3 border-b last:border-0 gap-2 min-h-[44px]"
+            className="flex justify-between items-center py-3 border-b border-[var(--card-border)] last:border-0 gap-2 min-h-[44px]"
           >
-            <span className="text-sm sm:text-base break-words">
+            <span className="text-sm sm:text-base break-words text-[var(--foreground)]">
               <strong>{s.fromName}</strong> משלם ל־<strong>{s.toName}</strong>
             </span>
-            <span className="font-bold text-base sm:text-lg shrink-0">{s.amount.toFixed(2)} ₪</span>
+            <span className="font-semibold text-base sm:text-lg shrink-0 text-[var(--foreground)]">{s.amount.toFixed(2)} ₪</span>
           </li>
         ))}
       </ul>
@@ -466,7 +611,7 @@ function AddExpenseScreen({ tripId, participants, onClose, onSaved }: AddExpense
 
   return (
     <div className="fixed inset-0 z-50 overflow-y-auto bg-black/50 flex items-center justify-center p-4">
-      <div className="bg-white rounded-xl shadow-xl max-w-lg w-full max-h-[90vh] overflow-y-auto p-4 sm:p-6">
+      <div className="bg-[var(--card-bg)] rounded-xl shadow-lg border border-[var(--card-border)] max-w-lg w-full max-h-[90vh] overflow-y-auto p-4 sm:p-6">
         <div className="flex justify-between items-center mb-4">
           <h2 className="text-lg font-bold">הוספת הוצאה</h2>
           <button
@@ -646,16 +791,16 @@ function ExpensesList({
 
   if (payments.length === 0) return null;
   return (
-    <div className="mt-6 bg-white rounded-xl shadow overflow-hidden">
-      <h3 className="p-3 sm:p-4 font-semibold border-b text-sm sm:text-base">רשימת הוצאות</h3>
-      <ul className="divide-y">
+    <div className="mt-6 bg-[var(--card-bg)] border border-[var(--card-border)] rounded-xl shadow-sm overflow-hidden">
+      <h3 className="p-3 sm:p-4 font-semibold border-b border-[var(--card-border)] text-sm sm:text-base text-[var(--foreground)]">רשימת הוצאות</h3>
+      <ul className="divide-y divide-[var(--card-border)]">
         {payments.map((p) => (
           <li key={p.id} className="p-4 flex justify-between items-start gap-3">
             <div className="min-w-0 flex-1">
-              <p className="font-bold text-base sm:text-lg">{Number(p.amount).toFixed(2)} ₪</p>
-              <p className="text-gray-600 text-sm sm:text-base">{p.payer.nickname || p.payer.name}</p>
-              {p.description && <p className="text-sm text-gray-500 truncate">{p.description}</p>}
-              <p className="text-xs text-gray-400">
+              <p className="font-semibold text-base sm:text-lg text-[var(--foreground)]">{Number(p.amount).toFixed(2)} ₪</p>
+              <p className="text-[var(--muted)] text-sm sm:text-base">{p.payer.nickname || p.payer.name}</p>
+              {p.description && <p className="text-sm text-[var(--muted)] truncate">{p.description}</p>}
+              <p className="text-xs text-[var(--muted)]">
                 {new Date(p.paid_at).toLocaleDateString("he-IL")}
               </p>
             </div>

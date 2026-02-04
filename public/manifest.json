@@ -11,10 +11,10 @@
   "dir": "rtl",
   "icons": [
     {
-      "src": "/next.svg",
-      "sizes": "394x80",
-      "type": "image/svg+xml",
-      "purpose": "any"
+      "src": "/logo.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
     }
   ]
 }
