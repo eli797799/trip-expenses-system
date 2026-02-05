@@ -34,3 +34,11 @@ export type PaymentRow = {
   note: string | null;
   paid_at: string;
 };
+
+export type TripMessageRow = {
+  id: string;
+  trip_id: string;
+  sender_name: string;
+  content: string;
+  created_at: string;
+};

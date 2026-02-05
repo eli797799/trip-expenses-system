@@ -464,6 +464,13 @@ export default function TripPage() {
       </div>
 
       <h1 className="text-lg sm:text-xl font-semibold mb-1 sm:mb-2 break-words text-[var(--foreground)] animate-fade-in opacity-0 animate-delay-1 [animation-fill-mode:forwards]">{trip.name}</h1>
+      <Link
+        href={`/trip/${code}/chat`}
+        className="inline-flex items-center gap-2 btn-neon px-4 py-2.5 rounded-xl min-h-[44px] tap-target mb-4 animate-fade-in opacity-0 animate-delay-1 [animation-fill-mode:forwards]"
+      >
+        <span aria-hidden>💬</span>
+        עדכונים לוגיסטיים
+      </Link>
       {(trip.start_date || trip.end_date) && (
         <p className="text-[var(--muted)] text-sm mb-4">
           {trip.start_date && new Date(trip.start_date).toLocaleDateString("he-IL")}
@@ -619,6 +626,8 @@ export default function TripPage() {
       {showAddExpense && (
         <AddExpenseScreen
           tripId={trip.id}
+          tripCode={code}
+          tripName={trip.name}
           participants={trip.participants}
           onClose={() => setShowAddExpense(false)}
           onSaved={() => {
@@ -629,6 +638,13 @@ export default function TripPage() {
       )}
 
       <ExpensesList payments={trip.payments} onDelete={refresh} />
+
+      {paymentUnlocked && summary && (
+        <HonorLeagueSection
+          participants={trip.participants}
+          payments={trip.payments}
+        />
+      )}
     </div>
   );
 }
@@ -889,12 +905,14 @@ function WhoPaysWhom({ settlements }: { settlements: { fromName: string; toName:
 
 type AddExpenseScreenProps = {
   tripId: string;
+  tripCode: string;
+  tripName: string;
   participants: ParticipantRow[];
   onClose: () => void;
   onSaved: () => void;
 };
 
-function AddExpenseScreen({ tripId, participants, onClose, onSaved }: AddExpenseScreenProps) {
+function AddExpenseScreen({ tripId, tripCode, tripName, participants, onClose, onSaved }: AddExpenseScreenProps) {
   const [amount, setAmount] = useState("");
   const [paidById, setPaidById] = useState("");
   const [description, setDescription] = useState("");
@@ -980,6 +998,42 @@ function AddExpenseScreen({ tripId, participants, onClose, onSaved }: AddExpense
         alert(insertError.message || "שגיאה בשמירה");
         return;
       }
+
+      const amt = parseFloat(amount);
+      const payer = participants.find((p) => p.id === paidById);
+      const payerName = payer ? (payer.nickname || payer.name) : "מישהו";
+      const otherNames = participants
+        .filter((p) => p.id !== paidById)
+        .map((p) => p.nickname || p.name);
+
+      try {
+        const funnyRes = await fetch("/api/push/funny-message", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            payerName,
+            amount: amt,
+            description: description.trim() || "הוצאה",
+            otherNames,
+          }),
+        });
+        const funnyData = (await funnyRes.json()) as { message?: string };
+        const msg = funnyData.message?.trim() || `${payerName} שילם ${amt} ₪ על ${description.trim() || "הוצאה"}.`;
+        const viewCode = typeof window !== "undefined" ? localStorage.getItem("trip_view_code_" + tripCode) : null;
+        await fetch("/api/push/send", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            tripCode,
+            viewCode: viewCode || "",
+            title: tripName,
+            body: msg,
+          }),
+        });
+      } catch {
+        // התראות הן אופציונליות – לא מכשילות את השמירה
+      }
+
       onSaved();
     } catch (e) {
       alert(e instanceof Error ? e.message : "שגיאה");
@@ -1139,6 +1193,101 @@ function AddExpenseScreen({ tripId, participants, onClose, onSaved }: AddExpense
             </button>
           </div>
         </form>
+      </div>
+    </div>
+  );
+}
+
+function HonorLeagueSection({
+  participants,
+  payments,
+}: {
+  participants: ParticipantRow[];
+  payments: PaymentWithPayer[];
+}) {
+  if (participants.length === 0 || payments.length === 0) return null;
+
+  const participantMap = new Map(participants.map((p) => [p.id, p]));
+
+  const paymentCountByParticipant = new Map<string, number>();
+  const totalPaidByParticipant = new Map<string, number>();
+  participants.forEach((p) => {
+    paymentCountByParticipant.set(p.id, 0);
+    totalPaidByParticipant.set(p.id, 0);
+  });
+  payments.forEach((p) => {
+    paymentCountByParticipant.set(
+      p.paid_by_id,
+      (paymentCountByParticipant.get(p.paid_by_id) ?? 0) + 1
+    );
+    totalPaidByParticipant.set(
+      p.paid_by_id,
+      (totalPaidByParticipant.get(p.paid_by_id) ?? 0) + Number(p.amount)
+    );
+  });
+
+  const king = participants.reduce<{ id: string; count: number; total: number } | null>(
+    (best, p) => {
+      const count = paymentCountByParticipant.get(p.id) ?? 0;
+      const total = totalPaidByParticipant.get(p.id) ?? 0;
+      if (!best || count > best.count || (count === best.count && total > best.total)) {
+        return { id: p.id, count, total };
+      }
+      return best;
+    },
+    null
+  );
+
+  const scrooge = participants.reduce<{ id: string; total: number } | null>(
+    (worst, p) => {
+      const total = totalPaidByParticipant.get(p.id) ?? 0;
+      if (!worst || total < worst.total) return { id: p.id, total };
+      return worst;
+    },
+    null
+  );
+
+  const kingParticipant = king ? participantMap.get(king.id) : null;
+  const scroogeParticipant = scrooge ? participantMap.get(scrooge.id) : null;
+
+  const scroogeFunnyLines = [
+    "מי שהארנק שלו נעול עם מנעול משולש 🔒",
+    "הלימון הכי סחוט בטיול 🍋",
+    "אולי שכח את הארנק בבית? 🤷",
+    "כבוד על החסכונות – אבל לא על חשבון החברים! 😄",
+  ];
+  const scroogeLine = scroogeFunnyLines[Math.abs(king?.id?.length ?? 0) % scroogeFunnyLines.length];
+
+  return (
+    <div className="mt-6 glass-card p-4 sm:p-5 animate-fade-in opacity-0 animate-delay-5 [animation-fill-mode:forwards]">
+      <h2 className="font-semibold mb-4 text-base sm:text-lg text-[var(--foreground)]">
+        סיכום כבוד ודירוגים
+      </h2>
+      <div className="space-y-4">
+        {kingParticipant && king && king.count > 0 && (
+          <div className="p-3 rounded-xl bg-gradient-to-r from-amber-500/20 to-yellow-600/20 border border-amber-500/30">
+            <p className="text-sm text-[var(--muted)] mb-1">מלך הטיול (The King)</p>
+            <p className="text-lg font-bold text-[var(--foreground)] flex items-center gap-2">
+              <span aria-hidden>👑</span>
+              {kingParticipant.nickname || kingParticipant.name}
+            </p>
+            <p className="text-sm text-[var(--muted)]">
+              שילם {king.count} פעמים • סה״כ {king.total.toFixed(2)} ₪
+            </p>
+          </div>
+        )}
+        {scroogeParticipant && scrooge && (
+          <div className="p-3 rounded-xl bg-gradient-to-r from-lime-500/15 to-emerald-600/15 border border-lime-500/25">
+            <p className="text-sm text-[var(--muted)] mb-1">הקמצן התורן (The Scrooge)</p>
+            <p className="text-lg font-bold text-[var(--foreground)] flex items-center gap-2">
+              <span aria-hidden>🔒</span>
+              {scroogeParticipant.nickname || scroogeParticipant.name}
+            </p>
+            <p className="text-sm text-[var(--muted)]">
+              שילם {scrooge.total.toFixed(2)} ₪ במצטבר • {scroogeLine}
+            </p>
+          </div>
+        )}
       </div>
     </div>
   );
