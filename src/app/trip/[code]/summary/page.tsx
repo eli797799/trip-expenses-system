@@ -100,7 +100,6 @@ function computeSummary(
 
 export default function TripSummaryPage() {
   const params = useParams();
-  const router = useRouter();
   const code = params?.code as string;
   const [trip, setTrip] = useState<TripData | null>(null);
   const [summary, setSummary] = useState<Summary | null>(null);
