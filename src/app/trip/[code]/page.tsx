@@ -383,7 +383,7 @@ export default function TripPage() {
 
       if (error || !messages) return;
 
-      const unreadCount = messages.filter((m: TripMessageRow) => {
+      const unreadCount = messages.filter((m: { created_at: string }) => {
         const messageTime = new Date(m.created_at).getTime();
         return messageTime > lastVisitTime;
       }).length;
