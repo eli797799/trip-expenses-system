@@ -122,6 +122,8 @@ export default function TripChatPage() {
     if (typeof window !== "undefined" && code) {
       const saved = localStorage.getItem(`chat_sender_${code}`);
       if (saved) setSenderName(saved);
+      // Mark chat as visited
+      localStorage.setItem(`chat_last_visit_${code}`, new Date().toISOString());
     }
   }, [code]);
 

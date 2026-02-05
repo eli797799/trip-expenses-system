@@ -6,7 +6,7 @@ import Link from "next/link";
 import { createClient } from "@/lib/supabase";
 import { computeBalances, computeSettlements } from "@/lib/balance";
 import { InstallAppButton } from "@/components/InstallAppButton";
-import type { TripRow, ParticipantRow, PaymentRow } from "@/types/database";
+import type { TripRow, ParticipantRow, PaymentRow, TripMessageRow } from "@/types/database";
 
 type Participant = {
   id: string;
@@ -116,9 +116,11 @@ export default function TripPage() {
   const [showSendNotification, setShowSendNotification] = useState(false);
   const [notificationMsg, setNotificationMsg] = useState("");
   const [sendingNotification, setSendingNotification] = useState(false);
+  const [unreadMessagesCount, setUnreadMessagesCount] = useState(0);
 
   const VIEW_STORAGE_KEY = "trip_view_";
   const VIEW_CODE_VALUE_KEY = "trip_view_code_";
+  const CHAT_LAST_VISIT_KEY = "chat_last_visit_";
 
   function checkPaymentUnlocked() {
     if (typeof window === "undefined" || !code) return false;
@@ -356,6 +358,59 @@ export default function TripPage() {
     refresh();
   }, [code]);
 
+  // Load unread messages count
+  useEffect(() => {
+    if (!trip?.id || !code) return;
+    const supabase = getSupabaseClient();
+    if (!supabase) return;
+
+    async function loadUnreadCount() {
+      const lastVisit = typeof window !== "undefined" 
+        ? localStorage.getItem(CHAT_LAST_VISIT_KEY + code) 
+        : null;
+      
+      const lastVisitTime = lastVisit ? new Date(lastVisit).getTime() : 0;
+
+      const { data: messages = [], error } = await supabase
+        .from("trip_messages")
+        .select("created_at")
+        .eq("trip_id", trip.id)
+        .order("created_at", { ascending: false });
+
+      if (error) return;
+
+      const unreadCount = messages.filter((m: TripMessageRow) => {
+        const messageTime = new Date(m.created_at).getTime();
+        return messageTime > lastVisitTime;
+      }).length;
+
+      setUnreadMessagesCount(unreadCount);
+    }
+
+    loadUnreadCount();
+
+    // Set up realtime subscription for new messages
+    const channel = supabase
+      .channel(`trip_messages_unread:${trip.id}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "INSERT",
+          schema: "public",
+          table: "trip_messages",
+          filter: `trip_id=eq.${trip.id}`,
+        },
+        () => {
+          loadUnreadCount();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [trip?.id, code]);
+
   // בקשת אישור התראות אוטומטית – מיד בכניסה לדף הטיול
   useEffect(() => {
     if (!trip || typeof window === "undefined" || !("Notification" in window) || !("serviceWorker" in navigator)) return;
@@ -464,13 +519,36 @@ export default function TripPage() {
       </div>
 
       <h1 className="text-lg sm:text-xl font-semibold mb-1 sm:mb-2 break-words text-[var(--foreground)] animate-fade-in opacity-0 animate-delay-1 [animation-fill-mode:forwards]">{trip.name}</h1>
-      <Link
-        href={`/trip/${code}/chat`}
-        className="inline-flex items-center gap-2 btn-neon px-4 py-2.5 rounded-xl min-h-[44px] tap-target mb-4 animate-fade-in opacity-0 animate-delay-1 [animation-fill-mode:forwards]"
-      >
-        <span aria-hidden>💬</span>
-        עדכונים לוגיסטיים
-      </Link>
+      <div className="flex flex-wrap gap-2 mb-4 animate-fade-in opacity-0 animate-delay-1 [animation-fill-mode:forwards]">
+        <Link
+          href={`/trip/${code}/chat`}
+          onClick={() => {
+            // Mark chat as visited when clicking
+            if (typeof window !== "undefined" && code) {
+              localStorage.setItem(CHAT_LAST_VISIT_KEY + code, new Date().toISOString());
+              setUnreadMessagesCount(0);
+            }
+          }}
+          className="inline-flex items-center gap-2 btn-neon px-4 py-2.5 rounded-xl min-h-[44px] tap-target relative"
+        >
+          <span aria-hidden>💬</span>
+          עדכונים לוגיסטיים
+          {unreadMessagesCount > 0 && (
+            <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs font-bold rounded-full min-w-[20px] h-5 flex items-center justify-center px-1.5">
+              {unreadMessagesCount > 99 ? "99+" : unreadMessagesCount}
+            </span>
+          )}
+        </Link>
+        {paymentUnlocked && (
+          <Link
+            href={`/trip/${code}/summary`}
+            className="inline-flex items-center gap-2 btn-ghost px-4 py-2.5 rounded-xl min-h-[44px] tap-target border border-white/10"
+          >
+            <span aria-hidden>📊</span>
+            סיכום וסגירת טיול
+          </Link>
+        )}
+      </div>
       {(trip.start_date || trip.end_date) && (
         <p className="text-[var(--muted)] text-sm mb-4">
           {trip.start_date && new Date(trip.start_date).toLocaleDateString("he-IL")}
