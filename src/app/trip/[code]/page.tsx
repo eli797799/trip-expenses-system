@@ -365,13 +365,16 @@ export default function TripPage() {
     if (!supabase) return;
 
     async function loadUnreadCount() {
+      const db = getSupabaseClient();
+      if (!db) return;
+      
       const lastVisit = typeof window !== "undefined" 
         ? localStorage.getItem(CHAT_LAST_VISIT_KEY + code) 
         : null;
       
       const lastVisitTime = lastVisit ? new Date(lastVisit).getTime() : 0;
 
-      const { data: messages = [], error } = await supabase
+      const { data: messages = [], error } = await db
         .from("trip_messages")
         .select("created_at")
         .eq("trip_id", trip.id)
