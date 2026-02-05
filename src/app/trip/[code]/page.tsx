@@ -361,6 +361,7 @@ export default function TripPage() {
   // Load unread messages count
   useEffect(() => {
     if (!trip?.id || !code) return;
+    const tripId = trip.id;
     const supabase = getSupabaseClient();
     if (!supabase) return;
 
@@ -377,7 +378,7 @@ export default function TripPage() {
       const { data: messages = [], error } = await db
         .from("trip_messages")
         .select("created_at")
-        .eq("trip_id", trip.id)
+        .eq("trip_id", tripId)
         .order("created_at", { ascending: false });
 
       if (error) return;
@@ -397,14 +398,14 @@ export default function TripPage() {
     if (!dbClient) return;
     
     const channel = dbClient
-      .channel(`trip_messages_unread:${trip.id}`)
+      .channel(`trip_messages_unread:${tripId}`)
       .on(
         "postgres_changes",
         {
           event: "INSERT",
           schema: "public",
           table: "trip_messages",
-          filter: `trip_id=eq.${trip.id}`,
+          filter: `trip_id=eq.${tripId}`,
         },
         () => {
           loadUnreadCount();
