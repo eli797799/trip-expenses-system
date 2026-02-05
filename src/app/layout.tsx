@@ -1,21 +1,9 @@
 import type { Metadata, Viewport } from "next";
 import Image from "next/image";
 import Link from "next/link";
-import { Plus_Jakarta_Sans, Geist_Mono } from "next/font/google";
 import { InstallAppButton } from "@/components/InstallAppButton";
 import { PushSetup } from "@/components/PushSetup";
 import "./globals.css";
-
-const plusJakarta = Plus_Jakarta_Sans({
-  variable: "--font-display",
-  subsets: ["latin"],
-  weight: ["300", "400", "500", "600", "700"],
-});
-
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
-});
 
 export const metadata: Metadata = {
   title: "ניהול הוצאות טיול",
@@ -41,9 +29,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="he" dir="rtl" className="dark">
-      <body
-        className={`${plusJakarta.variable} ${geistMono.variable} font-sans antialiased min-h-screen touch-manipulation flex flex-col bg-[var(--background)] text-[var(--foreground)]`}
-      >
+      <body className="font-sans antialiased min-h-screen touch-manipulation flex flex-col bg-[var(--background)] text-[var(--foreground)]">
         <header className="shrink-0 border-b border-white/10 bg-white/5 backdrop-blur-xl">
           <Link href="/" className="flex items-center justify-center gap-2 py-3 px-4 hover:opacity-90 transition-opacity">
             <Image

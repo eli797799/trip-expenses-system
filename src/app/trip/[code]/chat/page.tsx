@@ -45,10 +45,12 @@ export default function TripChatPage() {
     }
 
     let mounted = true;
-    let channel: ReturnType<typeof supabase.channel> | null = null;
+    let channel: ReturnType<ReturnType<typeof createClient>["channel"]> | null = null;
+    const db = supabase;
 
     async function load() {
-      const { data: tripRow, error: tripErr } = await supabase
+      if (!db) return;
+      const { data: tripRow, error: tripErr } = await db
         .from("trips")
         .select("id, name")
         .eq("trip_code", code)
@@ -71,7 +73,7 @@ export default function TripChatPage() {
         setTripName(tname);
       }
 
-      const { data: msgs = [], error: msgErr } = await supabase
+      const { data: msgs = [], error: msgErr } = await db
         .from("trip_messages")
         .select("*")
         .eq("trip_id", tid)
@@ -85,7 +87,7 @@ export default function TripChatPage() {
 
       setLoading(false);
 
-      channel = supabase
+      channel = db
         .channel(`trip_messages:${tid}`)
         .on(
           "postgres_changes",
@@ -112,7 +114,7 @@ export default function TripChatPage() {
 
     return () => {
       mounted = false;
-      if (channel) supabase.removeChannel(channel);
+      if (channel && db) db.removeChannel(channel);
     };
   }, [code]);
 

@@ -2,6 +2,8 @@
 
 /* ========== Dark Mode Premium + Neon ========== */
 :root {
+  --font-display: "Segoe UI", "Roboto", "Helvetica Neue", Arial, sans-serif;
+  --font-geist-mono: ui-monospace, "Cascadia Mono", "Consolas", monospace;
   --background: #0a0a0f;
   --foreground: #e2e8f0;
   --muted: #94a3b8;
