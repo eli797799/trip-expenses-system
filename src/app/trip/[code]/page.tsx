@@ -375,13 +375,13 @@ export default function TripPage() {
       
       const lastVisitTime = lastVisit ? new Date(lastVisit).getTime() : 0;
 
-      const { data: messages = [], error } = await db
+      const { data: messages, error } = await db
         .from("trip_messages")
         .select("created_at")
         .eq("trip_id", tripId)
         .order("created_at", { ascending: false });
 
-      if (error) return;
+      if (error || !messages) return;
 
       const unreadCount = messages.filter((m: TripMessageRow) => {
         const messageTime = new Date(m.created_at).getTime();
