@@ -393,7 +393,10 @@ export default function TripPage() {
     loadUnreadCount();
 
     // Set up realtime subscription for new messages
-    const channel = supabase
+    const dbClient = getSupabaseClient();
+    if (!dbClient) return;
+    
+    const channel = dbClient
       .channel(`trip_messages_unread:${trip.id}`)
       .on(
         "postgres_changes",
@@ -410,7 +413,10 @@ export default function TripPage() {
       .subscribe();
 
     return () => {
-      supabase.removeChannel(channel);
+      const cleanupClient = getSupabaseClient();
+      if (cleanupClient) {
+        cleanupClient.removeChannel(channel);
+      }
     };
   }, [trip?.id, code]);
 
